@@ -2,13 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import Image from 'next/image'
 
-declare global {
-  interface Window {
-    qq: any
-    TMap: any
-  }
-}
+// 直接使用静态路径
+const DS_MAP_PATH = '/assets/ds-map.jpeg'
 
 interface NavigationMapProps {
   fromAddress: string
@@ -24,50 +21,149 @@ interface BTArea {
   intensity: 'high' | 'medium' | 'low' | 'timefall'
 }
 
-// BT危险区域数据 (洛杉矶地区)
+// BT危险区域数据 - 现在使用地图坐标系统
 const BT_AREAS: BTArea[] = [
   // 高危险区域 (红色)
-  { lat: 34.0522, lng: -118.2437, radius: 2000, intensity: 'high' }, // Downtown LA
-  { lat: 34.0928, lng: -118.3287, radius: 1500, intensity: 'high' }, // Hollywood
+  { lat: 0.2, lng: 0.15, radius: 0.05, intensity: 'high' }, // 左上角
+  { lat: 0.8, lng: 0.2, radius: 0.07, intensity: 'high' },  // 右上角
   
   // 中等危险区域 (橙色)
-  { lat: 34.0195, lng: -118.4912, radius: 1800, intensity: 'medium' }, // Santa Monica
-  { lat: 34.1478, lng: -118.1445, radius: 1200, intensity: 'medium' }, // Pasadena
+  { lat: 0.3, lng: 0.5, radius: 0.06, intensity: 'medium' }, // 中部
+  { lat: 0.7, lng: 0.7, radius: 0.08, intensity: 'medium' }, // 右下角
   
   // 低危险区域 (黄色)
-  { lat: 34.0689, lng: -118.4452, radius: 1000, intensity: 'low' }, // Beverly Hills
-  { lat: 33.7701, lng: -118.1937, radius: 1500, intensity: 'low' }, // Long Beach
+  { lat: 0.4, lng: 0.3, radius: 0.04, intensity: 'low' },    // 中上部
+  { lat: 0.6, lng: 0.4, radius: 0.05, intensity: 'low' },    // 中右部
   
   // 时间雨区域 (紫色)
-  { lat: 34.1184, lng: -118.3004, radius: 2500, intensity: 'timefall' }, // Universal City
+  { lat: 0.5, lng: 0.6, radius: 0.1, intensity: 'timefall' }, // 中下部
 ]
 
-// polyline坐标解压函数
-function decompressPolyline(polyline: number[]): Array<[number, number]> {
-  const coordinates: Array<[number, number]> = []
-  
-  for (let i = 0; i < polyline.length; i += 2) {
-    if (i === 0) {
-      // 第一个坐标是原始未压缩的
-      coordinates.push([polyline[i], polyline[i + 1]])
-    } else {
-      // 后续坐标使用前向差分解压
-      const lat = polyline[i - 2] + polyline[i] / 1000000
-      const lng = polyline[i - 1] + polyline[i + 1] / 1000000
-      coordinates.push([lat, lng])
-    }
-  }
-  
-  return coordinates
+// 模拟配送站点数据 - 对应地图上的蓝色小房子图标
+const DELIVERY_STATIONS = [
+  { id: 'capital-knot', name: 'Capital Knot City', lat: 0.15, lng: 0.15 },
+  { id: 'port-knot', name: 'Port Knot City', lat: 0.85, lng: 0.2 },
+  { id: 'lake-knot', name: 'Lake Knot City', lat: 0.2, lng: 0.8 },
+  { id: 'south-knot', name: 'South Knot City', lat: 0.8, lng: 0.85 },
+  { id: 'distro-center-1', name: 'Distribution Center West', lat: 0.3, lng: 0.3 },
+  { id: 'distro-center-2', name: 'Distribution Center East', lat: 0.7, lng: 0.3 },
+  { id: 'waystation-1', name: 'Waystation North', lat: 0.4, lng: 0.2 },
+  { id: 'waystation-2', name: 'Waystation South', lat: 0.6, lng: 0.8 },
+  { id: 'engineer', name: 'Engineer', lat: 0.35, lng: 0.6 },
+  { id: 'craftsman', name: 'Craftsman', lat: 0.65, lng: 0.6 },
+  { id: 'elder', name: 'Elder', lat: 0.25, lng: 0.5 },
+  { id: 'doctor', name: 'Doctor', lat: 0.75, lng: 0.5 },
+]
+
+// 将经纬度坐标转换为画布坐标
+const coordsToCanvas = (
+  lat: number, 
+  lng: number, 
+  canvasWidth: number, 
+  canvasHeight: number
+): [number, number] => {
+  // 简单的线性映射，实际项目可能需要更复杂的投影
+  const x = lng * canvasWidth
+  const y = lat * canvasHeight
+  return [x, y]
 }
 
-export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCoords }: NavigationMapProps) {
+// 生成贝塞尔曲线路径点
+const generatePathPoints = (
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  pointCount = 50
+): Array<[number, number]> => {
+  const points: Array<[number, number]> = []
+  
+  // 计算控制点（使路径有弯曲）
+  const midLat = (fromLat + toLat) / 2
+  const midLng = (fromLng + toLng) / 2
+  
+  // 添加一些随机偏移使路径看起来更自然
+  const offsetLat = (Math.random() - 0.5) * 0.2
+  const offsetLng = (Math.random() - 0.5) * 0.2
+  
+  const cp1Lat = midLat + offsetLat
+  const cp1Lng = fromLng + (midLng - fromLng) * 0.5
+  
+  const cp2Lat = midLat - offsetLat
+  const cp2Lng = toLng - (toLng - midLng) * 0.5
+  
+  // 生成贝塞尔曲线上的点
+  for (let i = 0; i <= pointCount; i++) {
+    const t = i / pointCount
+    
+    // 三次贝塞尔曲线公式
+    const lat = Math.pow(1-t, 3) * fromLat + 
+               3 * Math.pow(1-t, 2) * t * cp1Lat + 
+               3 * (1-t) * Math.pow(t, 2) * cp2Lat + 
+               Math.pow(t, 3) * toLat
+               
+    const lng = Math.pow(1-t, 3) * fromLng + 
+               3 * Math.pow(1-t, 2) * t * cp1Lng + 
+               3 * (1-t) * Math.pow(t, 2) * cp2Lng + 
+               Math.pow(t, 3) * toLng
+    
+    const [x, y] = coordsToCanvas(lat, lng, canvasWidth, canvasHeight)
+    points.push([x, y])
+  }
+  
+  return points
+}
+
+// 模拟路线数据生成
+const generateRouteData = (
+  fromLat: number, 
+  fromLng: number, 
+  toLat: number, 
+  toLng: number
+) => {
+  // 计算直线距离（简化）
+  const dx = toLat - fromLat
+  const dy = toLng - fromLng
+  const distance = Math.sqrt(dx * dx + dy * dy) * 10000 // 模拟米数
+  
+  // 假设平均速度为5km/h，计算时间（分钟）
+  const duration = (distance / 1000) / 5 * 60
+  
+  return {
+    distance: Math.round(distance),
+    duration: Math.round(duration),
+    points: [] // 这里会在Canvas中生成
+  }
+}
+
+export default function NavigationMap({ 
+  fromAddress, 
+  fromCoords, 
+  toAddress, 
+  toCoords 
+}: NavigationMapProps) {
   const t = useTranslations('navigation')
-  const mapRef = useRef<HTMLDivElement>(null)
-  const [map, setMap] = useState<any>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [routeData, setRouteData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 800 })
+  
+  // 将API坐标转换为我们的地图坐标系统
+  const normalizeCoords = (coords: [number, number]): [number, number] => {
+    // 假设API坐标是经纬度，我们需要将其映射到0-1范围内
+    // 这里使用简单的线性映射，实际项目可能需要更精确的转换
+    const normalizedLat = (coords[0] - 30) / 10 // 假设经度范围是30-40
+    const normalizedLng = (coords[1] + 120) / 10 // 假设纬度范围是-120--110
+    
+    // 确保值在0-1范围内
+    return [
+      Math.max(0, Math.min(1, normalizedLat)),
+      Math.max(0, Math.min(1, normalizedLng))
+    ]
+  }
 
   // 获取BT强度文本
   const getIntensityText = (intensity: string) => {
@@ -83,6 +179,17 @@ export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCo
   // 获取BT区域颜色
   const getBTColor = (intensity: string) => {
     switch (intensity) {
+      case 'high': return 'rgba(255, 0, 0, 0.3)'      // 红色半透明
+      case 'medium': return 'rgba(255, 140, 0, 0.3)'  // 橙色半透明
+      case 'low': return 'rgba(255, 215, 0, 0.3)'     // 黄色半透明
+      case 'timefall': return 'rgba(138, 43, 226, 0.3)' // 紫色半透明
+      default: return 'rgba(128, 128, 128, 0.3)'
+    }
+  }
+  
+  // 获取BT区域边框颜色
+  const getBTBorderColor = (intensity: string) => {
+    switch (intensity) {
       case 'high': return '#FF0000'      // 红色
       case 'medium': return '#FF8C00'    // 橙色
       case 'low': return '#FFD700'       // 黄色
@@ -91,190 +198,196 @@ export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCo
     }
   }
 
-  // 调用腾讯地图路线规划API
-  const fetchRoute = async () => {
+  // 计算路线数据
+  const calculateRoute = () => {
     try {
       setLoading(true)
       setError(null)
-
-      // Use backend API instead of calling Tencent Maps directly to avoid CORS
-      const backendUrl = 'http://localhost:8081'
-      const url = `${backendUrl}/api/navigation/route?from_lat=${fromCoords[0]}&from_lng=${fromCoords[1]}&to_lat=${toCoords[0]}&to_lng=${toCoords[1]}`
       
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      // 将API坐标转换为我们的地图坐标系统
+      const normalizedFrom = normalizeCoords(fromCoords)
+      const normalizedTo = normalizeCoords(toCoords)
       
-      const data = await response.json()
+      // 生成模拟路线数据
+      const data = generateRouteData(
+        normalizedFrom[0], 
+        normalizedFrom[1], 
+        normalizedTo[0], 
+        normalizedTo[1]
+      )
       
-      // The backend returns NavigationResponse format, not Tencent format
-      if (data.route && data.route.points) {
-        // Convert backend response to expected format
-        const routeData = {
-          distance: data.route.distance,
-          duration: data.route.duration,
-          polyline: data.route.points // This is already decoded coordinates
-        }
-        setRouteData(routeData)
-      } else {
-        throw new Error(t('routeError'))
-      }
+      setRouteData(data)
     } catch (err) {
-      console.error('Route planning error:', err)
+      console.error('Route calculation error:', err)
       setError(err instanceof Error ? err.message : t('routeError'))
     } finally {
       setLoading(false)
     }
   }
 
-  // 初始化地图
+  // 初始化
   useEffect(() => {
-    if (!mapRef.current) return
-
-    const initMap = () => {
-      if (!window.qq || !window.qq.maps) {
-        setTimeout(initMap, 100)
-        return
+    calculateRoute()
+    
+    // 设置Canvas大小
+    const updateCanvasSize = () => {
+      const container = canvasRef.current?.parentElement
+      if (container) {
+        const { width, height } = container.getBoundingClientRect()
+        setCanvasSize({ 
+          width: Math.min(width, 800), 
+          height: Math.min(width, 800) // 保持正方形
+        })
       }
-
-      const mapInstance = new window.qq.maps.Map(mapRef.current, {
-        center: new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]),
-        zoom: 12
-      })
-
-      setMap(mapInstance)
     }
-
-    initMap()
-  }, [fromCoords])
-
-  // 获取路线数据
-  useEffect(() => {
-    fetchRoute()
+    
+    updateCanvasSize()
+    window.addEventListener('resize', updateCanvasSize)
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize)
+    }
   }, [fromCoords, toCoords])
 
-  // 绘制地图内容
+  // 绘制地图
   useEffect(() => {
-    if (!map || !routeData) return
-
-    // 清除之前的标记
-    map.clearOverlays()
-
-    try {
-      // Handle route coordinates - backend already provides decoded coordinates
-      let routeCoords
-      if (Array.isArray(routeData.polyline)) {
-        // Backend returns decoded coordinates as an array
-        routeCoords = routeData.polyline
-      } else if (typeof routeData.polyline === 'string') {
-        // Fallback for compressed polyline format
-        routeCoords = decompressPolyline(routeData.polyline)
-      } else {
-        throw new Error('Invalid route data format')
+    if (!canvasRef.current || !routeData) return
+    
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    // 清除画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
+    // 加载地图图片
+    const img = document.createElement('img') as HTMLImageElement
+    img.src = DS_MAP_PATH
+    img.onload = () => {
+      // 绘制地图背景
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      
+      // 绘制BT区域
+      BT_AREAS.forEach(area => {
+        const [x, y] = coordsToCanvas(area.lat, area.lng, canvas.width, canvas.height)
+        const radius = area.radius * Math.min(canvas.width, canvas.height)
+        
+        // 填充区域
+        ctx.beginPath()
+        ctx.arc(x, y, radius, 0, Math.PI * 2)
+        ctx.fillStyle = getBTColor(area.intensity)
+        ctx.fill()
+        
+        // 绘制边框
+        ctx.strokeStyle = getBTBorderColor(area.intensity)
+        ctx.lineWidth = 2
+        ctx.stroke()
+      })
+      
+      // 绘制配送站点
+      DELIVERY_STATIONS.forEach(station => {
+        const [x, y] = coordsToCanvas(station.lat, station.lng, canvas.width, canvas.height)
+        
+        // 绘制站点图标（蓝色小房子）
+        ctx.fillStyle = '#00BFFF'
+        ctx.beginPath()
+        // 房子主体
+        ctx.rect(x - 8, y - 6, 16, 10)
+        ctx.fill()
+        
+        // 房子屋顶
+        ctx.beginPath()
+        ctx.moveTo(x - 10, y - 6)
+        ctx.lineTo(x, y - 14)
+        ctx.lineTo(x + 10, y - 6)
+        ctx.closePath()
+        ctx.fill()
+        
+        // 房子门
+        ctx.fillStyle = '#87CEFA'
+        ctx.fillRect(x - 2, y - 4, 4, 8)
+      })
+      
+      // 将API坐标转换为我们的地图坐标系统
+      const normalizedFrom = normalizeCoords(fromCoords)
+      const normalizedTo = normalizeCoords(toCoords)
+      
+      // 生成路径点
+      const pathPoints = generatePathPoints(
+        normalizedFrom[0], 
+        normalizedFrom[1], 
+        normalizedTo[0], 
+        normalizedTo[1],
+        canvas.width,
+        canvas.height
+      )
+      
+      // 绘制路径
+      ctx.beginPath()
+      ctx.moveTo(pathPoints[0][0], pathPoints[0][1])
+      
+      for (let i = 1; i < pathPoints.length; i++) {
+        ctx.lineTo(pathPoints[i][0], pathPoints[i][1])
       }
       
-      // 创建路线
-      const routePath = routeCoords.map((coord: any) => 
-        new window.qq.maps.LatLng(coord.lat || coord[0], coord.lng || coord[1])
+      // 设置路径样式
+      ctx.strokeStyle = '#00FFFF' // 青色
+      ctx.lineWidth = 4
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      
+      // 发光效果
+      ctx.shadowColor = '#00FFFF'
+      ctx.shadowBlur = 10
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+      
+      // 绘制路径
+      ctx.stroke()
+      
+      // 重置阴影效果
+      ctx.shadowColor = 'transparent'
+      
+      // 绘制起点和终点标记
+      const [startX, startY] = coordsToCanvas(
+        normalizedFrom[0], 
+        normalizedFrom[1], 
+        canvas.width, 
+        canvas.height
       )
-
-      const polyline = new window.qq.maps.Polyline({
-        path: routePath,
-        strokeColor: '#0066CC',
-        strokeWeight: 6,
-        strokeOpacity: 0.8,
-        map: map
-      })
-
-      // 添加起点标记
-      const startMarker = new window.qq.maps.Marker({
-        position: new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]),
-        map: map,
-        title: t('startPoint')
-      })
-
-      const startInfoWindow = new window.qq.maps.InfoWindow({
-        content: `<div style="padding: 10px;">
-          <h4>${t('startPoint')}</h4>
-          <p>${fromAddress}</p>
-        </div>`
-      })
-
-      window.qq.maps.event.addListener(startMarker, 'click', () => {
-        startInfoWindow.open(map, startMarker)
-      })
-
-      // 添加终点标记
-      const endMarker = new window.qq.maps.Marker({
-        position: new window.qq.maps.LatLng(toCoords[0], toCoords[1]),
-        map: map,
-        title: t('endPoint')
-      })
-
-      const endInfoWindow = new window.qq.maps.InfoWindow({
-        content: `<div style="padding: 10px;">
-          <h4>${t('endPoint')}</h4>
-          <p>${toAddress}</p>
-        </div>`
-      })
-
-      window.qq.maps.event.addListener(endMarker, 'click', () => {
-        endInfoWindow.open(map, endMarker)
-      })
-
-      // 添加BT危险区域
-      BT_AREAS.forEach((area, index) => {
-        const circle = new window.qq.maps.Circle({
-          center: new window.qq.maps.LatLng(area.lat, area.lng),
-          radius: area.radius,
-          fillColor: getBTColor(area.intensity),
-          fillOpacity: 0.3,
-          strokeColor: getBTColor(area.intensity),
-          strokeWeight: 2,
-          strokeOpacity: 0.8,
-          map: map
-        })
-
-        const btInfoWindow = new window.qq.maps.InfoWindow({
-          content: `<div style="padding: 10px;">
-            <h4>${t('btArea')}</h4>
-            <p><strong>${t('intensity')}:</strong> ${getIntensityText(area.intensity)}</p>
-            <p><strong>${t('radius')}:</strong> ${area.radius}m</p>
-            <p style="color: #ff6b35; font-weight: bold;">${t('avoidanceRecommended')}</p>
-          </div>`
-        })
-
-        window.qq.maps.event.addListener(circle, 'click', (e: any) => {
-          btInfoWindow.setPosition(e.latLng)
-          btInfoWindow.open(map)
-        })
-      })
-
-      // 调整地图视野以包含所有点
-      const bounds = new window.qq.maps.LatLngBounds()
-      bounds.extend(new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]))
-      bounds.extend(new window.qq.maps.LatLng(toCoords[0], toCoords[1]))
+      const [endX, endY] = coordsToCanvas(
+        normalizedTo[0], 
+        normalizedTo[1], 
+        canvas.width, 
+        canvas.height
+      )
       
-      // 包含BT区域
-      BT_AREAS.forEach(area => {
-        bounds.extend(new window.qq.maps.LatLng(area.lat, area.lng))
-      })
+      // 起点标记（绿色）
+      ctx.beginPath()
+      ctx.arc(startX, startY, 8, 0, Math.PI * 2)
+      ctx.fillStyle = '#00FF00'
+      ctx.fill()
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.lineWidth = 2
+      ctx.stroke()
       
-      map.fitBounds(bounds)
-
-    } catch (err) {
-      console.error('Error rendering map:', err)
-      setError(t('mapRenderError'))
+      // 终点标记（红色）
+      ctx.beginPath()
+      ctx.arc(endX, endY, 8, 0, Math.PI * 2)
+      ctx.fillStyle = '#FF0000'
+      ctx.fill()
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.lineWidth = 2
+      ctx.stroke()
     }
-  }, [map, routeData, fromCoords, toCoords, fromAddress, toAddress, t])
+  }, [canvasRef, routeData, canvasSize, fromCoords, toCoords])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('loadingRoute')}</p>
+      <div className="w-full h-96 bg-gray-800 border border-orange-500/30 rounded-lg flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-orange-300 font-mono text-sm">{t('loadingRoute')}</p>
         </div>
       </div>
     )
@@ -282,13 +395,12 @@ export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCo
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96 bg-red-50 rounded-lg border border-red-200">
+      <div className="w-full h-96 bg-red-900/20 border border-red-500/30 rounded-lg flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-500 text-xl mb-2">⚠️</div>
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-400 font-mono text-sm mb-4">{error}</p>
           <button 
-            onClick={fetchRoute}
-            className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            onClick={calculateRoute}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-mono text-sm transition-colors"
           >
             {t('retry')}
           </button>
@@ -298,61 +410,60 @@ export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCo
   }
 
   return (
-    <div className="space-y-4">
-      {/* 路线信息 */}
+    <div className="w-full bg-gray-900 border border-orange-500/30 rounded-lg overflow-hidden relative">
+      {/* 地图画布 */}
+      <canvas 
+        ref={canvasRef}
+        width={canvasSize.width}
+        height={canvasSize.height}
+        className="w-full h-auto"
+      />
+      
+      {/* 路线信息面板 */}
       {routeData && (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="font-semibold text-gray-800 mb-2">{t('routeInfo')}</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">{t('distance')}:</span>
-              <span className="ml-2 font-medium">{(routeData.distance / 1000).toFixed(1)} km</span>
-            </div>
-            <div>
-              <span className="text-gray-600">{t('duration')}:</span>
-              <span className="ml-2 font-medium">{Math.round(routeData.duration / 60)} {t('minutes')}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">{t('toll')}:</span>
-              <span className="ml-2 font-medium">¥{routeData.toll || 0}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">{t('trafficLights')}:</span>
-              <span className="ml-2 font-medium">{routeData.traffic_light_count || 0}</span>
-            </div>
+        <div className="absolute top-4 left-4 bg-gray-800/90 border border-orange-500/30 rounded-lg p-4 backdrop-blur-sm">
+          <h3 className="text-orange-300 font-mono text-sm font-bold mb-2">{t('routeInfo')}</h3>
+          <div className="space-y-1 text-xs font-mono">
+            <p className="text-gray-400">
+              <span className="text-orange-200">{t('distance')}:</span> {(routeData.distance / 1000).toFixed(1)} km
+            </p>
+            <p className="text-gray-400">
+              <span className="text-orange-200">{t('duration')}:</span> {Math.round(routeData.duration)} {t('minutes')}
+            </p>
           </div>
         </div>
       )}
 
-      {/* BT区域图例 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="font-semibold text-gray-800 mb-3">{t('btLegend')}</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
-            <span>{getIntensityText('high')}</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-orange-500 mr-2"></div>
-            <span>{getIntensityText('medium')}</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
-            <span>{getIntensityText('low')}</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 rounded-full bg-purple-500 mr-2"></div>
-            <span>{getIntensityText('timefall')}</span>
-          </div>
+      {/* BT图例 */}
+      <div className="absolute bottom-4 right-4 bg-gray-800/90 border border-orange-500/30 rounded-lg p-3 backdrop-blur-sm">
+        <h4 className="text-orange-300 font-mono text-xs font-bold mb-2">{t('btLegend')}</h4>
+        <div className="space-y-1">
+          {['high', 'medium', 'low', 'timefall'].map((intensity) => (
+            <div key={intensity} className="flex items-center space-x-2">
+              <div 
+                className="w-3 h-3 rounded-full border"
+                style={{ 
+                  backgroundColor: getBTColor(intensity),
+                  borderColor: getBTBorderColor(intensity)
+                }}
+              />
+              <span className="text-gray-400 font-mono text-xs">
+                {getIntensityText(intensity)}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* 地图容器 */}
-      <div 
-        ref={mapRef} 
-        className="w-full h-96 rounded-lg border border-gray-300"
-        style={{ minHeight: '400px' }}
-      />
+      
+      {/* 地图信息 */}
+      <div className="absolute bottom-4 left-4 bg-gray-800/90 border border-orange-500/30 rounded-lg p-3 backdrop-blur-sm">
+        <h4 className="text-orange-300 font-mono text-xs font-bold mb-2">
+          {fromAddress} → {toAddress}
+        </h4>
+        <p className="text-gray-400 font-mono text-xs">
+          {t('btLegend')}: {BT_AREAS.length} {t('btArea')}
+        </p>
+      </div>
     </div>
   )
 } 
