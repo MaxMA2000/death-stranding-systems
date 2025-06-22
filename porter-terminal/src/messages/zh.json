@@ -125,5 +125,28 @@
       "low": "低危险",
       "timefall": "时间雨区域"
     }
+  },
+  "map": {
+    "title": "导航地图",
+    "startPoint": "起点",
+    "endPoint": "终点",
+    "routeInfo": "路线信息",
+    "distance": "距离",
+    "duration": "时长",
+    "btArea": "BT区域",
+    "intensity": "强度",
+    "radius": "半径",
+    "btLegend": "BT危险区域",
+    "avoidanceRecommended": "建议避开",
+    "loadingRoute": "正在计算路线...",
+    "routeError": "路线计算失败",
+    "mapRenderError": "地图渲染失败",
+    "retry": "重试",
+    "btIntensity": {
+      "high": "高危险",
+      "medium": "中等危险",
+      "low": "低危险",
+      "timefall": "时间雨区域"
+    }
   }
 } 

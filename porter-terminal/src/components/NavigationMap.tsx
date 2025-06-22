@@ -84,15 +84,16 @@ const generatePathPoints = (
   const midLat = (fromLat + toLat) / 2
   const midLng = (fromLng + toLng) / 2
   
-  // 添加一些随机偏移使路径看起来更自然
-  const offsetLat = (Math.random() - 0.5) * 0.2
-  const offsetLng = (Math.random() - 0.5) * 0.2
+  // 增加偏移量，使路径更长，至少跨越地图的2/3
+  const offsetLat = (Math.random() - 0.5) * 0.6  // 增加到0.6
+  const offsetLng = (Math.random() - 0.5) * 0.6  // 增加到0.6
   
+  // 增加控制点距离，使曲线更加弯曲
   const cp1Lat = midLat + offsetLat
-  const cp1Lng = fromLng + (midLng - fromLng) * 0.5
+  const cp1Lng = fromLng + (midLng - fromLng) * 1.5  // 增加到1.5
   
   const cp2Lat = midLat - offsetLat
-  const cp2Lng = toLng - (toLng - midLng) * 0.5
+  const cp2Lng = toLng - (toLng - midLng) * 1.5  // 增加到1.5
   
   // 生成贝塞尔曲线上的点
   for (let i = 0; i <= pointCount; i++) {
@@ -233,10 +234,15 @@ export default function NavigationMap({
     const updateCanvasSize = () => {
       const container = canvasRef.current?.parentElement
       if (container) {
-        const { width, height } = container.getBoundingClientRect()
+        const { width } = container.getBoundingClientRect()
+        
+        // 使地图更大，并保持宽高比
+        const mapWidth = Math.min(width, 1000) // 增加最大宽度到1000
+        const mapHeight = mapWidth * 0.75 // 使用4:3的宽高比
+        
         setCanvasSize({ 
-          width: Math.min(width, 800), 
-          height: Math.min(width, 800) // 保持正方形
+          width: mapWidth, 
+          height: mapHeight
         })
       }
     }
@@ -417,6 +423,7 @@ export default function NavigationMap({
         width={canvasSize.width}
         height={canvasSize.height}
         className="w-full h-auto"
+        style={{ minHeight: '500px' }} // 添加最小高度确保地图足够大
       />
       
       {/* 路线信息面板 */}
