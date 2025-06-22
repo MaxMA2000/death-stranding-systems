@@ -1,0 +1,41 @@
+{
+  "header": {
+    "title": "山姆·搬运工·桥接",
+    "subtitle": "搬运工终端界面",
+    "status": "活跃",
+    "switchLanguage": "English"
+  },
+  "dashboard": {
+    "title": "配送订单",
+    "ordersInQueue": "队列中有 {count} 个订单",
+    "activeOrders": "活跃订单",
+    "orderDetails": "订单详情",
+    "noOrders": "暂无订单",
+    "waitingForDeliveries": "等待新的配送任务...",
+    "selectOrder": "选择订单查看详情",
+    "connectionStatus": {
+      "connected": "已连接",
+      "connecting": "连接中",
+      "disconnected": "已断开"
+    },
+    "orderInfo": {
+      "from": "发件人",
+      "to": "收件人",
+      "pickup": "取件",
+      "payment": "付款",
+      "weight": "重量：{weight}公斤"
+    },
+    "actions": {
+      "startDelivery": "开始配送",
+      "completeDelivery": "完成配送",
+      "cancel": "取消"
+    },
+    "status": {
+      "pending": "待处理",
+      "assigned": "已分配",
+      "inProgress": "进行中",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    }
+  }
+} 

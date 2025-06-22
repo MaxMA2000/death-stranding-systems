@@ -1,0 +1,41 @@
+{
+  "header": {
+    "title": "SAM PORTER BRIDGES",
+    "subtitle": "Porter Terminal Interface",
+    "status": "ACTIVE",
+    "switchLanguage": "中文"
+  },
+  "dashboard": {
+    "title": "DELIVERY ORDERS",
+    "ordersInQueue": "{count} order(s) in queue",
+    "activeOrders": "ACTIVE ORDERS",
+    "orderDetails": "ORDER DETAILS",
+    "noOrders": "No orders available",
+    "waitingForDeliveries": "Waiting for new deliveries...",
+    "selectOrder": "Select an order to view details",
+    "connectionStatus": {
+      "connected": "CONNECTED",
+      "connecting": "CONNECTING",
+      "disconnected": "DISCONNECTED"
+    },
+    "orderInfo": {
+      "from": "FROM",
+      "to": "TO",
+      "pickup": "PICKUP",
+      "payment": "PAYMENT",
+      "weight": "Weight: {weight}kg"
+    },
+    "actions": {
+      "startDelivery": "START DELIVERY",
+      "completeDelivery": "COMPLETE DELIVERY",
+      "cancel": "CANCEL"
+    },
+    "status": {
+      "pending": "PENDING",
+      "assigned": "ASSIGNED", 
+      "inProgress": "IN PROGRESS",
+      "completed": "COMPLETED",
+      "cancelled": "CANCELLED"
+    }
+  }
+} 

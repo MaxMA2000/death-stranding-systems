@@ -1,8 +1,3 @@
----
-description: 
-globs: 
-alwaysApply: true
----
 # Project Development Rules & Guidelines
 
 This document outlines the development standards, conventions, and best practices to be followed for the Death Stranding Systems project. Adhering to these rules will ensure code quality, consistency, and collaboration efficiency.
@@ -11,6 +6,35 @@ This document outlines the development standards, conventions, and best practice
 
 ### 1. Language
 All code, comments, documentation, and commit messages **MUST** be written in English.
+
+### 2. Branching Strategy
+We use a feature-branching workflow.
+*   `main`: Contains stable, production-ready code. Direct pushes are forbidden.
+*   `develop`: Integration branch for features. This is the primary development branch.
+*   **Feature Branches:** All new work (features, fixes, chores) **MUST** be done in a separate branch.
+    *   Branch names should be descriptive and prefixed with `feature/`, `fix/`, `docs/`, `chore/`, etc.
+    *   Example: `feature/user-authentication`, `fix/map-rendering-bug`.
+*   Pull Requests (PRs) should be used to merge feature branches into `develop`.
+
+### 3. Commit Messages
+We follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. This helps in automating changelogs and makes the project history more readable.
+*   **Format:** `<type>[optional scope]: <description>`
+*   **Common Types:**
+    *   `feat`: A new feature.
+    *   `fix`: A bug fix.
+    *   `docs`: Documentation only changes.
+    *   `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc).
+    *   `refactor`: A code change that neither fixes a bug nor adds a feature.
+    *   `perf`: A code change that improves performance.
+    *   `test`: Adding missing tests or correcting existing tests.
+    *   `build`: Changes that affect the build system or external dependencies.
+    *   `ci`: Changes to our CI configuration files and scripts.
+    *   `chore`: Other changes that don't modify src or test files.
+
+**Example:**
+```
+feat(api): add endpoint for placing new orders
+```
 
 ---
 
@@ -72,6 +96,3 @@ Follow the standard Go project layout.
   /ui       # Generic, reusable UI elements (Button, Input, Card)
   /feature  # Components specific to a feature (OrderForm, MapView)
 ``` 
-
-### 6. Language
-* Always use i18n to have both Simplified Chinese and English

@@ -1,0 +1,71 @@
+{
+  "header": {
+    "title": "BRIDGES CUSTOMER TERMINAL",
+    "subtitle": "Knot City Delivery Network",
+    "status": "ONLINE",
+    "switchLanguage": "中文"
+  },
+  "orderForm": {
+    "title": "NEW DELIVERY ORDER",
+    "subtitle": "Submit your delivery request to the Bridges network",
+    "sender": {
+      "title": "SENDER INFORMATION",
+      "name": "Full Name",
+      "location": "Location Address", 
+      "knotCity": "Knot City"
+    },
+    "recipient": {
+      "title": "RECIPIENT INFORMATION",
+      "name": "Full Name",
+      "location": "Location Address",
+      "knotCity": "Knot City"
+    },
+    "cargo": {
+      "title": "CARGO DETAILS",
+      "name": "Item Name",
+      "weight": "Weight (kg)",
+      "description": "Description",
+      "category": "Category",
+      "categories": {
+        "Standard": "Standard",
+        "Fragile": "Fragile",
+        "Medical": "Medical",
+        "Emergency": "Emergency",
+        "Hazardous": "Hazardous"
+      }
+    },
+    "delivery": {
+      "title": "DELIVERY OPTIONS",
+      "pickup": "Pickup Method",
+      "payment": "Payment Information",
+      "pickupMethods": {
+        "Standard Pickup": "Standard Pickup",
+        "Express Pickup": "Express Pickup",
+        "Scheduled Pickup": "Scheduled Pickup"
+      }
+    },
+    "submit": "SUBMIT ORDER",
+    "submitting": "SUBMITTING...",
+    "success": "Order submitted successfully! Order ID: {orderId}",
+    "error": "Failed to submit order. Please try again."
+  },
+  "placeholders": {
+    "enterName": "Enter full name",
+    "enterLocation": "Enter location address",
+    "selectKnotCity": "Select Knot City",
+    "enterItemName": "Enter item name",
+    "enterWeight": "Enter weight",
+    "enterDescription": "Enter description",
+    "selectCategory": "Select category",
+    "selectPickup": "Select pickup method",
+    "enterPayment": "Enter payment information"
+  },
+  "knotCities": [
+    "Capital Knot City",
+    "Port Knot City", 
+    "Lake Knot City",
+    "South Knot City",
+    "Mountain Knot City",
+    "Edge Knot City"
+  ]
+} 

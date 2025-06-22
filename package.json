@@ -1,0 +1,16 @@
+{
+  "name": "death-stranding-systems",
+  "version": "1.0.0",
+  "description": "A full-stack application simulating the complex logistics and delivery network of the \"Bridges\" company from the video game *Death Stranding*. This project is a system design exploration for a YouTube/Bilibili/Red video.",
+  "main": "test-websocket.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "ws": "^8.18.2"
+  }
+}

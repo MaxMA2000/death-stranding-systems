@@ -1,0 +1,375 @@
+'use client'
+
+import { useState } from 'react'
+import { useTranslations } from 'next-intl'
+
+export default function OrderForm() {
+  const t = useTranslations('orderForm')
+  const tPlaceholders = useTranslations('placeholders')
+  const tKnotCities = useTranslations('knotCities')
+
+  const [formData, setFormData] = useState({
+    senderName: '',
+    senderLocation: '',
+    senderKnotCity: '',
+    recipientName: '',
+    recipientLocation: '',
+    recipientKnotCity: '',
+    itemName: '',
+    itemWeight: '',
+    itemDescription: '',
+    itemCategory: '',
+    pickupMethod: '',
+    paymentInfo: ''
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [orderId, setOrderId] = useState<string>('')
+
+  const categories = ['Standard', 'Fragile', 'Medical', 'Emergency', 'Hazardous']
+  const pickupMethods = ['Standard Pickup', 'Express Pickup', 'Scheduled Pickup']
+  const knotCities = [
+    'Capital Knot City',
+    'Port Knot City', 
+    'Lake Knot City',
+    'South Knot City',
+    'Mountain Knot City',
+    'Edge Knot City'
+  ]
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitStatus('idle')
+
+    try {
+      const orderData = {
+        sender: {
+          name: formData.senderName,
+          location: formData.senderLocation,
+          knot_city: formData.senderKnotCity
+        },
+        recipient: {
+          name: formData.recipientName,
+          location: formData.recipientLocation,
+          knot_city: formData.recipientKnotCity
+        },
+        item: {
+          name: formData.itemName,
+          description: formData.itemDescription,
+          weight: parseFloat(formData.itemWeight),
+          category: formData.itemCategory
+        },
+        pickup_method: formData.pickupMethod,
+        payment_info: formData.paymentInfo
+      }
+
+      const response = await fetch('http://localhost:8081/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setSubmitStatus('success')
+        setOrderId(result.id)
+        // Reset form
+        setFormData({
+          senderName: '',
+          senderLocation: '',
+          senderKnotCity: '',
+          recipientName: '',
+          recipientLocation: '',
+          recipientKnotCity: '',
+          itemName: '',
+          itemWeight: '',
+          itemDescription: '',
+          itemCategory: '',
+          pickupMethod: '',
+          paymentInfo: ''
+        })
+      } else {
+        setSubmitStatus('error')
+      }
+    } catch (error) {
+      console.error('Error submitting order:', error)
+      setSubmitStatus('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-gray-800 border border-blue-500/30 rounded-lg p-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-mono text-blue-300 tracking-wider mb-2">
+            {t('title')}
+          </h2>
+          <p className="text-blue-400/80 font-mono text-sm">
+            {t('subtitle')}
+          </p>
+        </div>
+
+        {submitStatus === 'success' && (
+          <div className="mb-6 p-4 bg-green-900/30 border border-green-500/50 rounded-lg">
+            <p className="text-green-400 font-mono text-sm">
+              {t('success', { orderId })}
+            </p>
+          </div>
+        )}
+
+        {submitStatus === 'error' && (
+          <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded-lg">
+            <p className="text-red-400 font-mono text-sm">
+              {t('error')}
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Sender Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-mono text-blue-300 border-b border-blue-500/20 pb-2">
+              {t('sender.title')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('sender.name')}
+                </label>
+                <input
+                  type="text"
+                  name="senderName"
+                  value={formData.senderName}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterName')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('sender.location')}
+                </label>
+                <input
+                  type="text"
+                  name="senderLocation"
+                  value={formData.senderLocation}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterLocation')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('sender.knotCity')}
+                </label>
+                <select
+                  name="senderKnotCity"
+                  value={formData.senderKnotCity}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                >
+                  <option value="">{tPlaceholders('selectKnotCity')}</option>
+                  {knotCities.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Recipient Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-mono text-blue-300 border-b border-blue-500/20 pb-2">
+              {t('recipient.title')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('recipient.name')}
+                </label>
+                <input
+                  type="text"
+                  name="recipientName"
+                  value={formData.recipientName}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterName')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('recipient.location')}
+                </label>
+                <input
+                  type="text"
+                  name="recipientLocation"
+                  value={formData.recipientLocation}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterLocation')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('recipient.knotCity')}
+                </label>
+                <select
+                  name="recipientKnotCity"
+                  value={formData.recipientKnotCity}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                >
+                  <option value="">{tPlaceholders('selectKnotCity')}</option>
+                  {knotCities.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Cargo Details */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-mono text-blue-300 border-b border-blue-500/20 pb-2">
+              {t('cargo.title')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('cargo.name')}
+                </label>
+                <input
+                  type="text"
+                  name="itemName"
+                  value={formData.itemName}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterItemName')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('cargo.weight')}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="itemWeight"
+                  value={formData.itemWeight}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterWeight')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('cargo.description')}
+                </label>
+                <textarea
+                  name="itemDescription"
+                  value={formData.itemDescription}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterDescription')}
+                  rows={3}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('cargo.category')}
+                </label>
+                <select
+                  name="itemCategory"
+                  value={formData.itemCategory}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                >
+                  <option value="">{tPlaceholders('selectCategory')}</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {t(`cargo.categories.${category}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Options */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-mono text-blue-300 border-b border-blue-500/20 pb-2">
+              {t('delivery.title')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('delivery.pickup')}
+                </label>
+                <select
+                  name="pickupMethod"
+                  value={formData.pickupMethod}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                >
+                  <option value="">{tPlaceholders('selectPickup')}</option>
+                  {pickupMethods.map((method) => (
+                    <option key={method} value={method}>
+                      {t(`delivery.pickupMethods.${method}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  {t('delivery.payment')}
+                </label>
+                <input
+                  type="text"
+                  name="paymentInfo"
+                  value={formData.paymentInfo}
+                  onChange={handleInputChange}
+                  placeholder={tPlaceholders('enterPayment')}
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-6">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-mono py-3 px-6 rounded-lg transition-colors"
+            >
+              {isSubmitting ? t('submitting') : t('submit')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+} 

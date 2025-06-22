@@ -1,0 +1,71 @@
+{
+  "header": {
+    "title": "桥接客户终端",
+    "subtitle": "结点城市配送网络",
+    "status": "在线",
+    "switchLanguage": "English"
+  },
+  "orderForm": {
+    "title": "新配送订单",
+    "subtitle": "向桥接网络提交您的配送请求",
+    "sender": {
+      "title": "发件人信息",
+      "name": "姓名",
+      "location": "地址", 
+      "knotCity": "结点城市"
+    },
+    "recipient": {
+      "title": "收件人信息",
+      "name": "姓名",
+      "location": "地址",
+      "knotCity": "结点城市"
+    },
+    "cargo": {
+      "title": "货物详情",
+      "name": "物品名称",
+      "weight": "重量 (公斤)",
+      "description": "描述",
+      "category": "类别",
+      "categories": {
+        "Standard": "标准",
+        "Fragile": "易碎",
+        "Medical": "医疗",
+        "Emergency": "紧急",
+        "Hazardous": "危险品"
+      }
+    },
+    "delivery": {
+      "title": "配送选项",
+      "pickup": "取件方式",
+      "payment": "付款信息",
+      "pickupMethods": {
+        "Standard Pickup": "标准取件",
+        "Express Pickup": "快速取件",
+        "Scheduled Pickup": "预约取件"
+      }
+    },
+    "submit": "提交订单",
+    "submitting": "提交中...",
+    "success": "订单提交成功！订单号：{orderId}",
+    "error": "订单提交失败，请重试。"
+  },
+  "placeholders": {
+    "enterName": "请输入姓名",
+    "enterLocation": "请输入地址",
+    "selectKnotCity": "选择结点城市",
+    "enterItemName": "请输入物品名称",
+    "enterWeight": "请输入重量",
+    "enterDescription": "请输入描述",
+    "selectCategory": "选择类别",
+    "selectPickup": "选择取件方式",
+    "enterPayment": "请输入付款信息"
+  },
+  "knotCities": [
+    "首都结点城市",
+    "港口结点城市", 
+    "湖泊结点城市",
+    "南方结点城市",
+    "山区结点城市",
+    "边缘结点城市"
+  ]
+} 
