@@ -593,12 +593,12 @@ func (s *Store) generateCheckpoints(points []types.Coordinates) []types.Checkpoi
 }
 
 func (s *Store) initializeMockData() {
-	// Initialize mock porters
+	// Initialize mock porters - 使用洛杉矶坐标
 	samPorter := &types.Porter{
 		ID:           "550e8400-e29b-41d4-a716-446655440000",
 		Name:         "Sam Porter Bridges",
-		Status:       "available",
-		Location:     types.Coordinates{Lat: 39.9042, Lng: 116.4074},
+		Status:       "available",                                     // 改为available，这样新订单可以分配给他
+		Location:     types.Coordinates{Lat: 34.0522, Lng: -118.2437}, // 洛杉矶市中心
 		ActiveOrders: []string{},
 		Rating:       4.9,
 		Equipment:    []string{"ladder", "rope", "boots", "scanner"},
@@ -606,25 +606,25 @@ func (s *Store) initializeMockData() {
 	}
 	s.porters[samPorter.ID] = samPorter
 
-	// Initialize mock BT areas
+	// Initialize mock BT areas - 使用洛杉矶周边区域
 	btAreas := []types.BTArea{
 		{
 			Name:      "Central Crater",
-			Center:    types.Coordinates{Lat: 39.9142, Lng: 116.4174},
+			Center:    types.Coordinates{Lat: 34.0622, Lng: -118.2537}, // 市中心北部
 			Radius:    2000,
 			Intensity: "high",
 			IsActive:  true,
 		},
 		{
 			Name:      "Timefall Zone Alpha",
-			Center:    types.Coordinates{Lat: 39.8942, Lng: 116.3974},
+			Center:    types.Coordinates{Lat: 34.0422, Lng: -118.2337}, // 市中心东南
 			Radius:    1500,
 			Intensity: "timefall",
 			IsActive:  true,
 		},
 		{
 			Name:      "BT Cluster Beta",
-			Center:    types.Coordinates{Lat: 39.9342, Lng: 116.4374},
+			Center:    types.Coordinates{Lat: 34.0722, Lng: -118.2637}, // 市中心西北
 			Radius:    1000,
 			Intensity: "medium",
 			IsActive:  true,
@@ -645,29 +645,29 @@ func (s *Store) initializeMockData() {
 }
 
 func (s *Store) createInitialOrders(porter *types.Porter) {
-	// Order 1: Medical supplies delivery (in progress)
+	// Order 1: Medical supplies delivery (in progress) - 洛杉矶医院间配送
 	order1 := &types.Order{
 		ID: uuid.New().String(),
 		Sender: types.ContactInfo{
-			Name:        "Central Knot City Medical Center",
-			Location:    "Beijing Medical District",
-			KnotCity:    "Central Knot City",
-			Coordinates: types.Coordinates{Lat: 39.9042, Lng: 116.4074},
+			Name:        "UCLA医学中心 / UCLA Medical Center",
+			Location:    "韦斯特伍德医疗区 / Westwood Medical District",
+			KnotCity:    "西洛杉矶结点城市 / West LA Knot City",
+			Coordinates: types.Coordinates{Lat: 34.0689, Lng: -118.4452}, // UCLA医学中心
 		},
 		Recipient: types.ContactInfo{
-			Name:        "Lake Knot City Hospital",
-			Location:    "Emergency Ward",
-			KnotCity:    "Lake Knot City",
-			Coordinates: types.Coordinates{Lat: 39.9242, Lng: 116.4274},
+			Name:        "西达斯-西奈医疗中心 / Cedars-Sinai Medical Center",
+			Location:    "比佛利格罗夫急诊科 / Beverly Grove Emergency Ward",
+			KnotCity:    "比佛利山结点城市 / Beverly Hills Knot City",
+			Coordinates: types.Coordinates{Lat: 34.0754, Lng: -118.3844}, // Cedars-Sinai医院
 		},
 		Item: types.ItemInfo{
-			Name:        "Emergency Medical Kit",
-			Description: "Critical medical supplies for emergency treatment",
+			Name:        "紧急医疗包 / Emergency Medical Kit",
+			Description: "用于急救治疗的关键医疗用品 / Critical medical supplies for emergency treatment",
 			Weight:      8.5,
-			Category:    "Medical",
+			Category:    "医疗用品 / Medical",
 		},
-		PickupMethod: "Express Pickup",
-		PaymentInfo:  "UCA Network - Priority",
+		PickupMethod: "快速取件 / Express Pickup",
+		PaymentInfo:  "UCA网络 - 优先级 / UCA Network - Priority",
 		Status:       types.OrderStatusInProgress,
 		PorterID:     porter.ID,
 		CreatedAt:    time.Now().Add(-2 * time.Hour),
@@ -680,29 +680,29 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 	s.orders[order1.ID] = order1
 	porter.ActiveOrders = append(porter.ActiveOrders, order1.ID)
 
-	// Order 2: Equipment delivery (assigned)
+	// Order 2: Equipment delivery (assigned) - 市中心到圣莫尼卡
 	order2 := &types.Order{
 		ID: uuid.New().String(),
 		Sender: types.ContactInfo{
-			Name:        "Bridges Equipment Depot",
-			Location:    "Industrial Zone 7",
-			KnotCity:    "Capital Knot City",
-			Coordinates: types.Coordinates{Lat: 39.8942, Lng: 116.3974},
+			Name:        "桥接装备仓库 / Bridges Equipment Depot",
+			Location:    "洛杉矶市中心工业区 / Downtown LA Industrial Zone",
+			KnotCity:    "洛杉矶中央结点城市 / Central LA Knot City",
+			Coordinates: types.Coordinates{Lat: 34.0522, Lng: -118.2437}, // 洛杉矶市中心
 		},
 		Recipient: types.ContactInfo{
-			Name:        "Mountain Knot City Outpost",
-			Location:    "Research Station Alpha",
-			KnotCity:    "Mountain Knot City",
-			Coordinates: types.Coordinates{Lat: 39.9442, Lng: 116.4474},
+			Name:        "圣莫尼卡码头前哨站 / Santa Monica Pier Outpost",
+			Location:    "海岸研究站 / Coastal Research Station",
+			KnotCity:    "圣莫尼卡结点城市 / Santa Monica Knot City",
+			Coordinates: types.Coordinates{Lat: 34.0089, Lng: -118.4973}, // 圣莫尼卡码头
 		},
 		Item: types.ItemInfo{
-			Name:        "Portable Bridge Constructor",
-			Description: "Advanced construction equipment for terrain traversal",
+			Name:        "便携式桥梁建造器 / Portable Bridge Constructor",
+			Description: "用于地形穿越的先进建造设备 / Advanced construction equipment for terrain traversal",
 			Weight:      15.2,
-			Category:    "Equipment",
+			Category:    "设备 / Equipment",
 		},
-		PickupMethod: "Standard Pickup",
-		PaymentInfo:  "Bridges Network - Standard",
+		PickupMethod: "标准取件 / Standard Pickup",
+		PaymentInfo:  "桥接网络 - 标准 / Bridges Network - Standard",
 		Status:       types.OrderStatusAssigned,
 		PorterID:     porter.ID,
 		CreatedAt:    time.Now().Add(-30 * time.Minute),
@@ -715,29 +715,29 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 	s.orders[order2.ID] = order2
 	porter.ActiveOrders = append(porter.ActiveOrders, order2.ID)
 
-	// Order 3: Fragile cargo (pending)
+	// Order 3: Fragile cargo (pending) - 好莱坞到帕萨迪纳
 	order3 := &types.Order{
 		ID: uuid.New().String(),
 		Sender: types.ContactInfo{
-			Name:        "Fragile Express Terminal",
-			Location:    "Distribution Center",
-			KnotCity:    "Port Knot City",
-			Coordinates: types.Coordinates{Lat: 39.8742, Lng: 116.3774},
+			Name:        "好莱坞制片厂终端 / Hollywood Studios Terminal",
+			Location:    "娱乐区 / Entertainment District",
+			KnotCity:    "好莱坞结点城市 / Hollywood Knot City",
+			Coordinates: types.Coordinates{Lat: 34.0928, Lng: -118.3287}, // 好莱坞
 		},
 		Recipient: types.ContactInfo{
-			Name:        "Timefall Farm Research Lab",
-			Location:    "Laboratory Complex",
-			KnotCity:    "South Knot City",
-			Coordinates: types.Coordinates{Lat: 39.9542, Lng: 116.4574},
+			Name:        "加州理工研究实验室 / Caltech Research Lab",
+			Location:    "帕萨迪纳科学综合体 / Pasadena Science Complex",
+			KnotCity:    "帕萨迪纳结点城市 / Pasadena Knot City",
+			Coordinates: types.Coordinates{Lat: 34.1377, Lng: -118.1253}, // 加州理工学院
 		},
 		Item: types.ItemInfo{
-			Name:        "Quantum Entanglement Device",
-			Description: "Highly sensitive scientific equipment - FRAGILE",
+			Name:        "量子纠缠装置 / Quantum Entanglement Device",
+			Description: "高度敏感的科学设备 - 易碎品 / Highly sensitive scientific equipment - FRAGILE",
 			Weight:      3.8,
-			Category:    "Scientific",
+			Category:    "科学仪器 / Scientific",
 		},
-		PickupMethod: "Fragile Handling",
-		PaymentInfo:  "Research Grant - Priority",
+		PickupMethod: "易碎品处理 / Fragile Handling",
+		PaymentInfo:  "研究基金 - 优先级 / Research Grant - Priority",
 		Status:       types.OrderStatusPending,
 		CreatedAt:    time.Now().Add(-15 * time.Minute),
 		UpdatedAt:    time.Now().Add(-15 * time.Minute),
@@ -748,29 +748,29 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 	order3.Route = route3
 	s.orders[order3.ID] = order3
 
-	// Order 4: Completed delivery (for history)
+	// Order 4: Completed delivery (for history) - 长滩到伯班克
 	order4 := &types.Order{
 		ID: uuid.New().String(),
 		Sender: types.ContactInfo{
-			Name:        "Heartman Research Lab",
-			Location:    "Scientific Complex",
-			KnotCity:    "Heartman Lab",
-			Coordinates: types.Coordinates{Lat: 39.8642, Lng: 116.3674},
+			Name:        "长滩港务局 / Long Beach Port Authority",
+			Location:    "货运码头综合体 / Cargo Terminal Complex",
+			KnotCity:    "长滩结点城市 / Long Beach Knot City",
+			Coordinates: types.Coordinates{Lat: 33.7701, Lng: -118.1937}, // 长滩港
 		},
 		Recipient: types.ContactInfo{
-			Name:        "Die-Hardman Command Center",
-			Location:    "Bridges HQ",
-			KnotCity:    "Capital Knot City",
-			Coordinates: types.Coordinates{Lat: 39.9642, Lng: 116.4674},
+			Name:        "伯班克制片厂指挥中心 / Burbank Studios Command Center",
+			Location:    "媒体制作中心 / Media Production Hub",
+			KnotCity:    "伯班克结点城市 / Burbank Knot City",
+			Coordinates: types.Coordinates{Lat: 34.1808, Lng: -118.3090}, // 伯班克
 		},
 		Item: types.ItemInfo{
-			Name:        "Chiral Crystal Sample",
-			Description: "Research sample for BT analysis",
+			Name:        "凯拉尔水晶样本 / Chiral Crystal Sample",
+			Description: "用于BT分析的研究样本 / Research sample for BT analysis",
 			Weight:      1.2,
-			Category:    "Research",
+			Category:    "研究材料 / Research",
 		},
-		PickupMethod: "Secure Transport",
-		PaymentInfo:  "Bridges Research Division",
+		PickupMethod: "安全运输 / Secure Transport",
+		PaymentInfo:  "桥接研究部门 / Bridges Research Division",
 		Status:       types.OrderStatusCompleted,
 		PorterID:     porter.ID,
 		CreatedAt:    time.Now().Add(-6 * time.Hour),
@@ -800,8 +800,8 @@ func (s *Store) simulateBTAreas() {
 				ID:   uuid.New().String(),
 				Name: fmt.Sprintf("Temporal BT-%d", rand.Intn(1000)),
 				Center: types.Coordinates{
-					Lat: 39.9042 + (rand.Float64()-0.5)*0.1, // Random around Beijing
-					Lng: 116.4074 + (rand.Float64()-0.5)*0.1,
+					Lat: 34.0522 + (rand.Float64()-0.5)*0.2, // 洛杉矶周边随机位置
+					Lng: -118.2437 + (rand.Float64()-0.5)*0.3,
 				},
 				Radius:    float64(500 + rand.Intn(1500)), // 500-2000m
 				Intensity: []string{"low", "medium", "high"}[rand.Intn(3)],

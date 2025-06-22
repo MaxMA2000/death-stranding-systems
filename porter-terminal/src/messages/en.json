@@ -43,6 +43,23 @@
       "cancel": "Cancel"
     }
   },
+  "navigation": {
+    "title": "Route Planning",
+    "loadingMap": "Loading map...",
+    "close": "Close",
+    "distance": "Distance",
+    "estimatedTime": "Estimated Time",
+    "dangerLevel": "Danger Level",
+    "btAreas": "BT Areas",
+    "routeWarnings": "Route Warnings",
+    "threatLevel": "Threat Level",
+    "effectRadius": "Effect Radius",
+    "highDanger": "High Danger",
+    "mediumDanger": "Medium Danger",
+    "lowDanger": "Low Danger",
+    "timefallZone": "Timefall Zone",
+    "unknown": "Unknown"
+  },
   "map": {
     "navigation": "Navigation",
     "destination": "Destination",

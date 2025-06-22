@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import MapComponent from './MapComponent'
+import NavigationMap from './NavigationMap'
 
 interface Order {
   id: string
@@ -36,7 +37,9 @@ export default function PorterDashboard() {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [activeTab, setActiveTab] = useState<'orders' | 'map'>('orders')
-  const [porterLocation, setPorterLocation] = useState<{ lat: number; lng: number }>({ lat: 39.9042, lng: 116.4074 })
+  const [porterLocation, setPorterLocation] = useState<{ lat: number; lng: number }>({ lat: 34.0522, lng: -118.2437 })
+  const [showNavigationMap, setShowNavigationMap] = useState(false)
+  const [navigationOrder, setNavigationOrder] = useState<Order | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -193,6 +196,16 @@ export default function PorterDashboard() {
     } catch (error) {
       console.error('Error updating porter location:', error)
     }
+  }
+
+  const showNavigation = (order: Order) => {
+    setNavigationOrder(order)
+    setShowNavigationMap(true)
+  }
+
+  const closeNavigation = () => {
+    setShowNavigationMap(false)
+    setNavigationOrder(null)
   }
 
   const getStatusColor = (status: string) => {
@@ -368,6 +381,14 @@ export default function PorterDashboard() {
 
               {/* Action Buttons */}
               <div className="flex space-x-2 pt-4 border-t border-orange-500/20">
+                {/* Navigation Button - Always available */}
+                <button
+                  onClick={() => showNavigation(selectedOrder)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs py-2 px-4 rounded transition-colors"
+                >
+                  🗺️ 导航
+                </button>
+
                 {selectedOrder.status === 'assigned' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'in_progress')}
@@ -411,6 +432,14 @@ export default function PorterDashboard() {
             onLocationUpdate={updatePorterLocation}
           />
         </div>
+      )}
+      
+      {/* Navigation Map Modal */}
+      {showNavigationMap && navigationOrder && (
+        <NavigationMap 
+          order={navigationOrder}
+          onClose={closeNavigation}
+        />
       )}
     </div>
   )

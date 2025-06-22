@@ -43,6 +43,23 @@
       "cancel": "取消"
     }
   },
+  "navigation": {
+    "title": "导航规划",
+    "loadingMap": "正在加载地图...",
+    "close": "关闭",
+    "distance": "距离",
+    "estimatedTime": "预计时间",
+    "dangerLevel": "危险等级",
+    "btAreas": "BT区域",
+    "routeWarnings": "路线警告",
+    "threatLevel": "威胁等级",
+    "effectRadius": "影响范围",
+    "highDanger": "高危险",
+    "mediumDanger": "中等危险",
+    "lowDanger": "低危险",
+    "timefallZone": "时间雨区域",
+    "unknown": "未知"
+  },
   "map": {
     "navigation": "导航",
     "destination": "目的地",
