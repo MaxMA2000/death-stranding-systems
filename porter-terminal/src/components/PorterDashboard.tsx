@@ -127,7 +127,7 @@ export default function PorterDashboard() {
         ws.onerror = (error) => {
           if (!isComponentMounted) return
           
-          console.error('WebSocket error:', error)
+          // console.error('WebSocket error:', error)
           setConnectionStatus('disconnected')
         }
       } catch (error) {
