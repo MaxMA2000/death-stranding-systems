@@ -1,14 +1,10 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"math/rand"
-	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
@@ -19,22 +15,20 @@ import (
 
 // Store manages orders, porters, and navigation data
 type Store struct {
-	orders     map[string]*types.Order
-	porters    map[string]*types.Porter
-	btAreas    map[string]*types.BTArea
-	routes     map[string]*types.Route
-	mu         sync.RWMutex
-	tencentKey string
+	orders  map[string]*types.Order
+	porters map[string]*types.Porter
+	btAreas map[string]*types.BTArea
+	routes  map[string]*types.Route
+	mu      sync.RWMutex
 }
 
 // NewStore creates a new store instance
 func NewStore() *Store {
 	store := &Store{
-		orders:     make(map[string]*types.Order),
-		porters:    make(map[string]*types.Porter),
-		btAreas:    make(map[string]*types.BTArea),
-		routes:     make(map[string]*types.Route),
-		tencentKey: "KWWBZ-2OOKL-LZZP5-MFARF-7XNZJ-2UFMV",
+		orders:  make(map[string]*types.Order),
+		porters: make(map[string]*types.Porter),
+		btAreas: make(map[string]*types.BTArea),
+		routes:  make(map[string]*types.Route),
 	}
 
 	// Initialize with mock data
@@ -48,6 +42,7 @@ func NewStore() *Store {
 
 // Order management methods
 func (s *Store) CreateOrder(order *types.Order) error {
+	log.Printf("Starting CreateOrder process...")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -55,23 +50,30 @@ func (s *Store) CreateOrder(order *types.Order) error {
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
 	order.Status = types.OrderStatusPending
+	log.Printf("Generated order ID: %s", order.ID)
 
 	// Auto-assign to available porter
 	if porter := s.findAvailablePorter(); porter != nil {
+		log.Printf("Found available porter: %s", porter.ID)
 		order.Status = types.OrderStatusAssigned
 		order.PorterID = porter.ID
 		assignedTo := porter.ID
 		order.AssignedTo = &assignedTo
 		porter.Status = "busy"
 		porter.ActiveOrders = append(porter.ActiveOrders, order.ID)
+		log.Printf("Assigned order %s to porter %s", order.ID, porter.ID)
 
-		// Calculate route
+		// Calculate route (now using mock data, no network calls)
 		if route, err := s.calculateRoute(order); err == nil {
 			order.Route = route
+			log.Printf("Route calculated successfully for order %s", order.ID)
+		} else {
+			log.Printf("Failed to calculate route for order %s: %v", order.ID, err)
 		}
 	}
 
 	s.orders[order.ID] = order
+	log.Printf("Order stored successfully with ID: %s, Status: %s", order.ID, order.Status)
 	return nil
 }
 
@@ -184,11 +186,9 @@ func (s *Store) CalculateNavigation(req types.NavigationRequest) (*types.Navigat
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Get route from Tencent Maps
-	route, err := s.getTencentRoute(req.From, req.To)
-	if err != nil {
-		return nil, err
-	}
+	// Generate mock route directly
+	log.Printf("CalculateNavigation: Generating mock route from (%.6f,%.6f) to (%.6f,%.6f)", req.From.Lat, req.From.Lng, req.To.Lat, req.To.Lng)
+	route := s.generateMockRoute(req.From, req.To)
 
 	// Apply BT avoidance if requested
 	if req.AvoidBT {
@@ -261,6 +261,16 @@ func (s *Store) findAvailablePorter() *types.Porter {
 }
 
 func (s *Store) calculateRoute(order *types.Order) (*types.Route, error) {
+	// Note: This method is called within a lock, so we cannot call CalculateNavigation
+	// which also tries to acquire a lock. Instead, we'll directly generate the route.
+	log.Printf("Calculating route from (%.6f,%.6f) to (%.6f,%.6f)",
+		order.Sender.Coordinates.Lat, order.Sender.Coordinates.Lng,
+		order.Recipient.Coordinates.Lat, order.Recipient.Coordinates.Lng)
+
+	// Generate mock route directly
+	route := s.generateMockRoute(order.Sender.Coordinates, order.Recipient.Coordinates)
+
+	// Apply BT avoidance if needed
 	req := types.NavigationRequest{
 		From:        order.Sender.Coordinates,
 		To:          order.Recipient.Coordinates,
@@ -269,110 +279,9 @@ func (s *Store) calculateRoute(order *types.Order) (*types.Route, error) {
 		Equipment:   []string{"standard"},
 	}
 
-	resp, err := s.CalculateNavigation(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return &resp.Route, nil
-}
-
-func (s *Store) getTencentRoute(from, to types.Coordinates) (*types.Route, error) {
-	// Tencent Maps Directions API - 根据腾讯位置服务文档优化
-	baseURL := "https://apis.map.qq.com/ws/direction/v1/driving/"
-
-	params := url.Values{}
-	// 腾讯地图API要求经纬度格式为 "纬度,经度"
-	params.Set("from", fmt.Sprintf("%.6f,%.6f", from.Lat, from.Lng))
-	params.Set("to", fmt.Sprintf("%.6f,%.6f", to.Lat, to.Lng))
-	params.Set("key", s.tencentKey)
-	params.Set("output", "json")
-	// 添加更多参数以提高成功率
-	params.Set("policy", "LEAST_TIME") // 最短时间路径
-	params.Set("waypoints", "")        // 途经点，暂时为空
-	params.Set("avoid_polygons", "")   // 避让区域，可以用于BT区域避让
-	params.Set("road_type", "0")       // 道路类型：0不限制
-
-	// 创建HTTP客户端，设置超时
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	fullURL := baseURL + "?" + params.Encode()
-	log.Printf("Requesting Tencent Maps API: %s", fullURL)
-
-	resp, err := client.Get(fullURL)
-	if err != nil {
-		log.Printf("Tencent API request failed: %v - using mock route", err)
-		return s.generateMockRoute(from, to), nil
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("Tencent API response read failed: %v - using mock route", err)
-		return s.generateMockRoute(from, to), nil
-	}
-
-	var tencentResp TencentRouteResponse
-	if err := json.Unmarshal(body, &tencentResp); err != nil {
-		log.Printf("Tencent API response parse failed: %v - using mock route", err)
-		return s.generateMockRoute(from, to), nil
-	}
-
-	if tencentResp.Status != 0 {
-		// API error - 根据错误码提供更详细的信息
-		errorMsg := s.getTencentErrorMessage(tencentResp.Status)
-		log.Printf("Tencent API error: %s (status: %d) - using mock route", errorMsg, tencentResp.Status)
-		return s.generateMockRoute(from, to), nil
-	}
-
-	// Convert Tencent response to our route format
-	route := &types.Route{
-		ID:        uuid.New().String(),
-		CreatedAt: time.Now(),
-	}
-
-	if len(tencentResp.Result.Routes) > 0 {
-		tencentRoute := tencentResp.Result.Routes[0]
-		route.Distance = float64(tencentRoute.Distance)
-		route.Duration = tencentRoute.Duration
-
-		// Convert polyline to coordinates
-		route.Points = s.decodePolyline(tencentRoute.Polyline)
-
-		// Add checkpoints (simplified - using waypoints)
-		route.Checkpoints = s.generateCheckpoints(route.Points)
-
-		log.Printf("Successfully calculated route: %.2fkm, %d minutes",
-			route.Distance/1000, route.Duration/60)
-	}
+	route = s.applyBTAvoidance(route, req)
 
 	return route, nil
-}
-
-// 根据腾讯地图API错误码返回中文错误信息
-func (s *Store) getTencentErrorMessage(status int) string {
-	switch status {
-	case 110:
-		return "请求参数信息有误"
-	case 121:
-		return "用户账户配额不足"
-	case 122:
-		return "用户签名校验失败"
-	case 311:
-		return "请求参数信息有误"
-	case 310:
-		return "请求参数信息有误，缺少必要参数key"
-	case 306:
-		return "请求有护持信息请检查字符串"
-	case 301:
-		return "请求参数信息有误，缺少必要参数"
-	case 302:
-		return "请求参数信息有误，参数值格式不正确"
-	default:
-		return fmt.Sprintf("未知错误 (状态码: %d)", status)
-	}
 }
 
 func (s *Store) generateMockRoute(from, to types.Coordinates) *types.Route {
@@ -560,16 +469,6 @@ func (s *Store) getMinDistanceToBTArea(points []types.Coordinates, area types.BT
 		return 0
 	}
 	return minDistance
-}
-
-func (s *Store) decodePolyline(encoded string) []types.Coordinates {
-	// Simplified polyline decoding - in real implementation, use proper algorithm
-	// For now, return sample points
-	return []types.Coordinates{
-		{Lat: 39.9042, Lng: 116.4074}, // Beijing
-		{Lat: 39.9142, Lng: 116.4174},
-		{Lat: 39.9242, Lng: 116.4274},
-	}
 }
 
 func (s *Store) generateCheckpoints(points []types.Coordinates) []types.Checkpoint {
@@ -827,17 +726,4 @@ func (s *Store) simulateBTAreas() {
 
 		s.mu.Unlock()
 	}
-}
-
-// Tencent Maps API response structures
-type TencentRouteResponse struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
-	Result  struct {
-		Routes []struct {
-			Distance int    `json:"distance"`
-			Duration int    `json:"duration"`
-			Polyline string `json:"polyline"`
-		} `json:"routes"`
-	} `json:"result"`
 }

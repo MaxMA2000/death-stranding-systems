@@ -31,6 +31,7 @@ export default function OrderForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [orderId, setOrderId] = useState<string>('')
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   // Dropdown options data
   const categoryKeys = ['Standard', 'Fragile', 'Medical', 'Emergency', 'Hazardous']
@@ -66,6 +67,7 @@ export default function OrderForm() {
     e.preventDefault()
     setIsSubmitting(true)
     setSubmitStatus('idle')
+    setErrorMessage('')
 
     try {
       // Get the actual city names for API submission
@@ -120,6 +122,7 @@ export default function OrderForm() {
         const result = await response.json()
         setSubmitStatus('success')
         setOrderId(result.id)
+        console.log('Order created successfully:', result)
         // Reset form
         setFormData({
           senderName: '',
@@ -140,7 +143,10 @@ export default function OrderForm() {
           paymentInfo: ''
         })
       } else {
+        const errorText = await response.text()
+        console.error('Failed to create order:', response.status, errorText)
         setSubmitStatus('error')
+        setErrorMessage(`创建订单失败: ${response.status} - ${errorText}`)
       }
     } catch (error) {
       console.error('Error submitting order:', error)
@@ -173,7 +179,7 @@ export default function OrderForm() {
         {submitStatus === 'error' && (
           <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded-lg">
             <p className="text-red-400 font-mono text-sm">
-              {t('error')}
+              {errorMessage || t('error')}
             </p>
           </div>
         )}

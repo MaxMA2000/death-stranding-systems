@@ -28,11 +28,16 @@ func NewOrderHandler(store *models.Store, hub *websocket.Hub) *OrderHandler {
 
 // CreateOrder handles POST /api/orders
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Received POST /api/orders request from %s\n", r.RemoteAddr)
+
 	var req types.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Printf("Failed to decode JSON: %v\n", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
+
+	fmt.Printf("Successfully decoded order request: %+v\n", req)
 
 	// Convert request to order
 	order := &types.Order{
@@ -44,17 +49,25 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.CreateOrder(order); err != nil {
+		fmt.Printf("Failed to create order: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Printf("Order created successfully: ID=%s, Status=%s\n", order.ID, order.Status)
+
 	// Notify porter if order was assigned
 	if order.Status == types.OrderStatusAssigned && order.PorterID != "" {
+		fmt.Printf("Notifying porter %s about new order %s\n", order.PorterID, order.ID)
 		h.hub.SendToPorter(order.PorterID, websocket.MessageTypeNewOrder, order)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(order)
+	if err := json.NewEncoder(w).Encode(order); err != nil {
+		fmt.Printf("Failed to encode response: %v\n", err)
+	} else {
+		fmt.Printf("Response sent successfully for order %s\n", order.ID)
+	}
 }
 
 // GetOrders handles GET /api/orders
