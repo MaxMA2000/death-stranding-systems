@@ -1,41 +1,61 @@
 {
   "header": {
-    "title": "山姆·搬运工·桥接",
-    "subtitle": "搬运工终端界面",
-    "status": "活跃",
+    "title": "山姆·波特·布里吉斯",
+    "subtitle": "桥接配送终端",
+    "porterID": "配送员ID",
+    "status": "状态",
+    "location": "位置",
+    "rating": "评分",
+    "deliveries": "配送次数",
+    "equipment": "装备",
     "switchLanguage": "English"
   },
   "dashboard": {
-    "title": "配送订单",
+    "title": "配送员仪表板",
     "ordersInQueue": "队列中有 {count} 个订单",
-    "activeOrders": "活跃订单",
-    "orderDetails": "订单详情",
-    "noOrders": "暂无订单",
-    "waitingForDeliveries": "等待新的配送任务...",
-    "selectOrder": "选择订单查看详情",
     "connectionStatus": {
       "connected": "已连接",
       "connecting": "连接中",
       "disconnected": "已断开"
     },
+    "activeOrders": "活跃订单",
+    "noOrders": "暂无活跃订单",
+    "waitingForDeliveries": "等待配送任务分配...",
+    "orderDetails": "订单详情",
+    "selectOrder": "选择订单查看详情",
     "orderInfo": {
+      "weight": "重量：{weight}公斤",
       "from": "发件人",
       "to": "收件人",
-      "pickup": "取件",
-      "payment": "付款",
-      "weight": "重量：{weight}公斤"
+      "pickup": "取件方式",
+      "payment": "付款方式"
+    },
+    "status": {
+      "pending": "待处理",
+      "assigned": "已分配",
+      "in_progress": "进行中",
+      "completed": "已完成",
+      "cancelled": "已取消"
     },
     "actions": {
       "startDelivery": "开始配送",
       "completeDelivery": "完成配送",
       "cancel": "取消"
-    },
-    "status": {
-      "pending": "待处理",
-      "assigned": "已分配",
-      "inProgress": "进行中",
-      "completed": "已完成",
-      "cancelled": "已取消"
     }
+  },
+  "map": {
+    "navigation": "导航",
+    "destination": "目的地",
+    "distance": "距离",
+    "calculating": "计算路径中",
+    "simulateBT": "模拟BT",
+    "warnings": "警告",
+    "btAreas": "BT区域",
+    "lowRisk": "低风险",
+    "mediumRisk": "中风险",
+    "highRisk": "高风险", 
+    "timefall": "时间雨",
+    "activeBTAreas": "{count} 个活跃BT区域",
+    "loadingMap": "加载地图中"
   }
 } 

@@ -2,14 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"bridges-backend/internal/models"
 	"bridges-backend/internal/websocket"
 	"bridges-backend/pkg/types"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -31,39 +29,30 @@ func NewOrderHandler(store *models.Store, hub *websocket.Hub) *OrderHandler {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req types.CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Validate required fields
-	if req.Sender.Name == "" || req.Recipient.Name == "" || req.Item.Name == "" {
-		http.Error(w, "Missing required fields", http.StatusBadRequest)
+	// Convert request to order
+	order := &types.Order{
+		Sender:       req.Sender,
+		Recipient:    req.Recipient,
+		Item:         req.Item,
+		PickupMethod: req.PickupMethod,
+		PaymentInfo:  req.PaymentInfo,
+	}
+
+	if err := h.store.CreateOrder(order); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Create the order
-	order := h.store.CreateOrder(req)
-
-	// Try to assign to an available porter
-	porter := h.store.GetAvailablePorter()
-	if porter != nil {
-		err := h.store.AssignOrderToPorter(order.ID, porter.ID)
-		if err != nil {
-			log.Printf("Failed to assign order to porter: %v", err)
-		} else {
-			// Send the order to the porter via WebSocket
-			message := types.WebSocketMessage{
-				Type:    "new_order",
-				Payload: order,
-			}
-			if err := h.hub.SendToPorter(porter.ID, message); err != nil {
-				log.Printf("Failed to send order to porter via WebSocket: %v", err)
-			}
-		}
+	// Notify porter if order was assigned
+	if order.Status == types.OrderStatusAssigned && order.PorterID != "" {
+		h.hub.SendToPorter(order.PorterID, websocket.MessageTypeNewOrder, order)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(order)
 }
 
@@ -78,14 +67,10 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 // GetOrder handles GET /api/orders/{id}
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	orderID, err := uuid.Parse(vars["id"])
-	if err != nil {
-		http.Error(w, "Invalid order ID", http.StatusBadRequest)
-		return
-	}
+	id := vars["id"]
 
-	order, exists := h.store.GetOrder(orderID)
-	if !exists {
+	order, err := h.store.GetOrder(id)
+	if err != nil {
 		http.Error(w, "Order not found", http.StatusNotFound)
 		return
 	}
@@ -94,47 +79,168 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(order)
 }
 
-// GetPorterOrders handles GET /api/porters/{id}/orders
-func (h *OrderHandler) GetPorterOrders(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	porterID, err := uuid.Parse(vars["id"])
-	if err != nil {
-		http.Error(w, "Invalid porter ID", http.StatusBadRequest)
-		return
-	}
-
-	orders := h.store.GetPorterOrders(porterID)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(orders)
-}
-
 // UpdateOrderStatus handles PATCH /api/orders/{id}/status
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	orderID, err := uuid.Parse(vars["id"])
-	if err != nil {
-		http.Error(w, "Invalid order ID", http.StatusBadRequest)
-		return
-	}
+	id := vars["id"]
 
 	var req struct {
-		Status types.OrderStatus `json:"status"`
+		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	err = h.store.UpdateOrderStatus(orderID, req.Status)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if err := h.store.UpdateOrderStatus(id, req.Status); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Get updated order
-	order, _ := h.store.GetOrder(orderID)
+	order, err := h.store.GetOrder(id)
+	if err != nil {
+		http.Error(w, "Order not found", http.StatusNotFound)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(order)
+}
+
+// CalculateNavigation handles POST /api/navigation/calculate
+func (h *OrderHandler) CalculateNavigation(w http.ResponseWriter, r *http.Request) {
+	var req types.NavigationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	response, err := h.store.CalculateNavigation(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetBTAreas handles GET /api/bt-areas
+func (h *OrderHandler) GetBTAreas(w http.ResponseWriter, r *http.Request) {
+	areas := h.store.GetBTAreas()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(areas)
+}
+
+// CreateBTArea handles POST /api/bt-areas
+func (h *OrderHandler) CreateBTArea(w http.ResponseWriter, r *http.Request) {
+	var area types.BTArea
+	if err := json.NewDecoder(r.Body).Decode(&area); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.CreateBTArea(area); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Broadcast BT alert to all porters
+	h.hub.BroadcastBTAlert(area)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(area)
+}
+
+// UpdateBTArea handles PUT /api/bt-areas/{id}
+func (h *OrderHandler) UpdateBTArea(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var area types.BTArea
+	if err := json.NewDecoder(r.Body).Decode(&area); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.UpdateBTArea(id, area); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Broadcast updated BT alert to all porters
+	h.hub.BroadcastBTAlert(area)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(area)
+}
+
+// GetPorters handles GET /api/porters
+func (h *OrderHandler) GetPorters(w http.ResponseWriter, r *http.Request) {
+	porters := h.store.GetAllPorters()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(porters)
+}
+
+// UpdatePorterLocation handles PATCH /api/porters/{id}/location
+func (h *OrderHandler) UpdatePorterLocation(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var req struct {
+		Location types.Coordinates `json:"location"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.UpdatePorterLocation(id, req.Location); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// RegisterRoutes registers all the routes for the order handler
+func (h *OrderHandler) RegisterRoutes(router *mux.Router) {
+	// Order routes
+	router.HandleFunc("/api/orders", h.CreateOrder).Methods("POST")
+	router.HandleFunc("/api/orders", h.GetOrders).Methods("GET")
+	router.HandleFunc("/api/orders/{id}", h.GetOrder).Methods("GET")
+	router.HandleFunc("/api/orders/{id}/status", h.UpdateOrderStatus).Methods("PATCH")
+
+	// Navigation routes
+	router.HandleFunc("/api/navigation/calculate", h.CalculateNavigation).Methods("POST")
+
+	// BT area routes
+	router.HandleFunc("/api/bt-areas", h.GetBTAreas).Methods("GET")
+	router.HandleFunc("/api/bt-areas", h.CreateBTArea).Methods("POST")
+	router.HandleFunc("/api/bt-areas/{id}", h.UpdateBTArea).Methods("PUT")
+
+	// Porter routes
+	router.HandleFunc("/api/porters", h.GetPorters).Methods("GET")
+	router.HandleFunc("/api/porters/{id}/location", h.UpdatePorterLocation).Methods("PATCH")
+}
+
+// CORS middleware
+func (h *OrderHandler) EnableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

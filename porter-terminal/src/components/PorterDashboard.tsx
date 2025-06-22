@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import MapComponent from './MapComponent'
 
 interface Order {
   id: string
@@ -9,11 +10,13 @@ interface Order {
     name: string
     location: string
     knot_city: string
+    coordinates: { lat: number; lng: number }
   }
   recipient: {
     name: string
     location: string
     knot_city: string
+    coordinates: { lat: number; lng: number }
   }
   item: {
     name: string
@@ -32,6 +35,8 @@ export default function PorterDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [activeTab, setActiveTab] = useState<'orders' | 'map'>('orders')
+  const [porterLocation, setPorterLocation] = useState<{ lat: number; lng: number }>({ lat: 39.9042, lng: 116.4074 })
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -81,8 +86,18 @@ export default function PorterDashboard() {
             const message = JSON.parse(event.data)
             console.log('Received message:', message)
             
-            if (message.type === 'new_order') {
-              setOrders(prev => [message.payload, ...prev])
+            switch (message.type) {
+              case 'new_order':
+                setOrders(prev => [message.payload, ...prev])
+                break
+              case 'bt_alert':
+                // Handle BT area alerts
+                console.log('BT Alert received:', message.payload)
+                break
+              case 'navigation_update':
+                // Handle navigation updates
+                console.log('Navigation update:', message.payload)
+                break
             }
           } catch (error) {
             console.error('Error parsing WebSocket message:', error)
@@ -144,7 +159,7 @@ export default function PorterDashboard() {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-             const response = await fetch(`http://localhost:8081/api/orders/${orderId}/status`, {
+      const response = await fetch(`http://localhost:8081/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -161,6 +176,22 @@ export default function PorterDashboard() {
       }
     } catch (error) {
       console.error('Error updating order status:', error)
+    }
+  }
+
+  const updatePorterLocation = async (location: { lat: number; lng: number }) => {
+    setPorterLocation(location)
+    
+    try {
+      await fetch('http://localhost:8081/api/porters/550e8400-e29b-41d4-a716-446655440000/location', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ location }),
+      })
+    } catch (error) {
+      console.error('Error updating porter location:', error)
     }
   }
 
@@ -196,20 +227,47 @@ export default function PorterDashboard() {
           </p>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${
-            connectionStatus === 'connected' ? 'bg-green-400 animate-pulse' : 
-            connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 
-            'bg-red-400'
-          }`}></div>
-          <span className="font-mono text-sm text-orange-200">
-            {t(`connectionStatus.${connectionStatus}`)}
-          </span>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-400 animate-pulse' : 
+              connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 
+              'bg-red-400'
+            }`}></div>
+            <span className="font-mono text-sm text-orange-200">
+              {t(`connectionStatus.${connectionStatus}`)}
+            </span>
+          </div>
+          
+          {/* Tab Navigation */}
+          <div className="flex bg-gray-800/50 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('orders')}
+              className={`px-4 py-2 font-mono text-sm rounded transition-all ${
+                activeTab === 'orders'
+                  ? 'bg-orange-600 text-white'
+                  : 'text-orange-300 hover:text-white hover:bg-orange-600/50'
+              }`}
+            >
+              Orders
+            </button>
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`px-4 py-2 font-mono text-sm rounded transition-all ${
+                activeTab === 'map'
+                  ? 'bg-orange-600 text-white'
+                  : 'text-orange-300 hover:text-white hover:bg-orange-600/50'
+              }`}
+            >
+              Map
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Orders List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Content Area */}
+      {activeTab === 'orders' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h3 className="text-lg font-mono text-orange-300 border-b border-orange-500/20 pb-2">
             {t('activeOrders')}
@@ -345,6 +403,15 @@ export default function PorterDashboard() {
           )}
         </div>
       </div>
+      ) : (
+        <div className="h-[600px]">
+          <MapComponent 
+            selectedOrder={selectedOrder}
+            porterLocation={porterLocation}
+            onLocationUpdate={updatePorterLocation}
+          />
+        </div>
+      )}
     </div>
   )
 } 

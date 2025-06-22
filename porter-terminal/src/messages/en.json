@@ -1,41 +1,61 @@
 {
   "header": {
-    "title": "SAM PORTER BRIDGES",
-    "subtitle": "Porter Terminal Interface",
-    "status": "ACTIVE",
+    "title": "Sam Porter Bridges",
+    "subtitle": "Bridges Delivery Terminal",
+    "porterID": "Porter ID",
+    "status": "Status",
+    "location": "Location",
+    "rating": "Rating",
+    "deliveries": "Deliveries",
+    "equipment": "Equipment",
     "switchLanguage": "中文"
   },
   "dashboard": {
-    "title": "DELIVERY ORDERS",
-    "ordersInQueue": "{count} order(s) in queue",
-    "activeOrders": "ACTIVE ORDERS",
-    "orderDetails": "ORDER DETAILS",
-    "noOrders": "No orders available",
-    "waitingForDeliveries": "Waiting for new deliveries...",
-    "selectOrder": "Select an order to view details",
+    "title": "Porter Dashboard",
+    "ordersInQueue": "{count} orders in queue",
     "connectionStatus": {
-      "connected": "CONNECTED",
-      "connecting": "CONNECTING",
-      "disconnected": "DISCONNECTED"
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "disconnected": "Disconnected"
     },
+    "activeOrders": "Active Orders",
+    "noOrders": "No active orders",
+    "waitingForDeliveries": "Waiting for delivery assignments...",
+    "orderDetails": "Order Details",
+    "selectOrder": "Select an order to view details",
     "orderInfo": {
-      "from": "FROM",
-      "to": "TO",
-      "pickup": "PICKUP",
-      "payment": "PAYMENT",
-      "weight": "Weight: {weight}kg"
-    },
-    "actions": {
-      "startDelivery": "START DELIVERY",
-      "completeDelivery": "COMPLETE DELIVERY",
-      "cancel": "CANCEL"
+      "weight": "Weight: {weight}kg",
+      "from": "From",
+      "to": "To",
+      "pickup": "Pickup Method",
+      "payment": "Payment"
     },
     "status": {
-      "pending": "PENDING",
-      "assigned": "ASSIGNED", 
-      "inProgress": "IN PROGRESS",
-      "completed": "COMPLETED",
-      "cancelled": "CANCELLED"
+      "pending": "Pending",
+      "assigned": "Assigned",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "actions": {
+      "startDelivery": "Start Delivery",
+      "completeDelivery": "Complete Delivery",
+      "cancel": "Cancel"
     }
+  },
+  "map": {
+    "navigation": "Navigation",
+    "destination": "Destination",
+    "distance": "Distance",
+    "calculating": "Calculating route",
+    "simulateBT": "Simulate BT",
+    "warnings": "Warnings",
+    "btAreas": "BT Areas",
+    "lowRisk": "Low Risk",
+    "mediumRisk": "Medium Risk", 
+    "highRisk": "High Risk",
+    "timefall": "Timefall",
+    "activeBTAreas": "{count} active BT areas",
+    "loadingMap": "Loading map"
   }
 } 

@@ -13,9 +13,13 @@ export default function OrderForm() {
     senderName: '',
     senderLocation: '',
     senderKnotCity: '',
+    senderLat: '',
+    senderLng: '',
     recipientName: '',
     recipientLocation: '',
     recipientKnotCity: '',
+    recipientLat: '',
+    recipientLng: '',
     itemName: '',
     itemWeight: '',
     itemDescription: '',
@@ -79,12 +83,20 @@ export default function OrderForm() {
         sender: {
           name: formData.senderName,
           location: formData.senderLocation,
-          knot_city: getSenderCityName()
+          knot_city: getSenderCityName(),
+          coordinates: {
+            lat: parseFloat(formData.senderLat) || 39.9042,
+            lng: parseFloat(formData.senderLng) || 116.4074
+          }
         },
         recipient: {
           name: formData.recipientName,
           location: formData.recipientLocation,
-          knot_city: getRecipientCityName()
+          knot_city: getRecipientCityName(),
+          coordinates: {
+            lat: parseFloat(formData.recipientLat) || 39.9142,
+            lng: parseFloat(formData.recipientLng) || 116.4174
+          }
         },
         item: {
           name: formData.itemName,
@@ -113,9 +125,13 @@ export default function OrderForm() {
           senderName: '',
           senderLocation: '',
           senderKnotCity: '',
+          senderLat: '',
+          senderLng: '',
           recipientName: '',
           recipientLocation: '',
           recipientKnotCity: '',
+          recipientLat: '',
+          recipientLng: '',
           itemName: '',
           itemWeight: '',
           itemDescription: '',
@@ -208,6 +224,34 @@ export default function OrderForm() {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="senderLat"
+                  value={formData.senderLat}
+                  onChange={handleInputChange}
+                  placeholder="39.9042"
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="senderLng"
+                  value={formData.senderLng}
+                  onChange={handleInputChange}
+                  placeholder="116.4074"
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                />
+              </div>
             </div>
           </div>
 
@@ -254,6 +298,34 @@ export default function OrderForm() {
                   label={t('recipient.knotCity')}
                   name="recipientKnotCity"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="recipientLat"
+                  value={formData.recipientLat}
+                  onChange={handleInputChange}
+                  placeholder="39.9142"
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="block text-blue-200 font-mono text-sm mb-2">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  name="recipientLng"
+                  value={formData.recipientLng}
+                  onChange={handleInputChange}
+                  placeholder="116.4174"
+                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
                 />
               </div>
             </div>

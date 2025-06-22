@@ -17,27 +17,22 @@ func main() {
 	store := models.NewStore()
 
 	// Initialize WebSocket hub
-	hub := websocket.NewHub()
+	hub := websocket.NewHub(store)
 	go hub.Run()
 
 	// Initialize handlers
 	orderHandler := handlers.NewOrderHandler(store, hub)
 
-	// Setup routes
+	// Setup router
 	router := mux.NewRouter()
 
-	// API routes
-	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/orders", orderHandler.CreateOrder).Methods("POST")
-	api.HandleFunc("/orders", orderHandler.GetOrders).Methods("GET")
-	api.HandleFunc("/orders/{id}", orderHandler.GetOrder).Methods("GET")
-	api.HandleFunc("/orders/{id}/status", orderHandler.UpdateOrderStatus).Methods("PATCH")
-	api.HandleFunc("/porters/{id}/orders", orderHandler.GetPorterOrders).Methods("GET")
+	// Register API routes
+	orderHandler.RegisterRoutes(router)
 
-	// WebSocket route
-	router.HandleFunc("/ws", hub.HandleWebSocket)
+	// WebSocket endpoint
+	router.HandleFunc("/ws", hub.ServeWS)
 
-	// Health check
+	// Health check endpoint
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -45,17 +40,27 @@ func main() {
 
 	// Setup CORS
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:3001"}, // Frontend URLs
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
 	})
 
 	handler := c.Handler(router)
 
-	log.Println("Bridges Backend Server starting on :8081")
+	log.Println("Starting Bridges Delivery Backend on :8081")
 	log.Println("WebSocket endpoint: ws://localhost:8081/ws")
-	log.Println("API endpoint: http://localhost:8081/api")
+	log.Println("API endpoints:")
+	log.Println("  GET  /health")
+	log.Println("  POST /api/orders")
+	log.Println("  GET  /api/orders")
+	log.Println("  GET  /api/orders/{id}")
+	log.Println("  PATCH /api/orders/{id}/status")
+	log.Println("  POST /api/navigation/calculate")
+	log.Println("  GET  /api/bt-areas")
+	log.Println("  POST /api/bt-areas")
+	log.Println("  PUT  /api/bt-areas/{id}")
+	log.Println("  GET  /api/porters")
+	log.Println("  PATCH /api/porters/{id}/location")
 
 	if err := http.ListenAndServe(":8081", handler); err != nil {
 		log.Fatal("Server failed to start:", err)
