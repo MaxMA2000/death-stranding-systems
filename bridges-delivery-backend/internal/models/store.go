@@ -583,7 +583,7 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 	order2 := &types.Order{
 		ID: uuid.New().String(),
 		Sender: types.ContactInfo{
-			Name:        "桥接装备仓库 / Bridges Equipment Depot",
+			Name:        "Bridges装备仓库 / Bridges Equipment Depot",
 			Location:    "洛杉矶市中心工业区 / Downtown LA Industrial Zone",
 			KnotCity:    "洛杉矶中央结点城市 / Central LA Knot City",
 			Coordinates: types.Coordinates{Lat: 34.0522, Lng: -118.2437}, // 洛杉矶市中心
@@ -601,7 +601,7 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 			Category:    "设备 / Equipment",
 		},
 		PickupMethod: "标准取件 / Standard Pickup",
-		PaymentInfo:  "桥接网络 - 标准 / Bridges Network - Standard",
+		PaymentInfo:  "Bridges网络 - 标准 / Bridges Network - Standard",
 		Status:       types.OrderStatusAssigned,
 		PorterID:     porter.ID,
 		CreatedAt:    time.Now().Add(-30 * time.Minute),
@@ -669,7 +669,7 @@ func (s *Store) createInitialOrders(porter *types.Porter) {
 			Category:    "研究材料 / Research",
 		},
 		PickupMethod: "安全运输 / Secure Transport",
-		PaymentInfo:  "桥接研究部门 / Bridges Research Division",
+		PaymentInfo:  "Bridges研究部门 / Bridges Research Division",
 		Status:       types.OrderStatusCompleted,
 		PorterID:     porter.ID,
 		CreatedAt:    time.Now().Add(-6 * time.Hour),

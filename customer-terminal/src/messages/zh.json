@@ -1,13 +1,13 @@
 {
   "header": {
-    "title": "桥接客户终端",
+    "title": "Bridges客户终端",
     "subtitle": "结点城市配送网络",
     "status": "在线",
     "switchLanguage": "English"
   },
   "orderForm": {
     "title": "新配送订单",
-    "subtitle": "向桥接网络提交您的配送请求",
+    "subtitle": "向Bridges网络提交您的配送请求",
     "sender": {
       "title": "发件人信息",
       "name": "姓名",
