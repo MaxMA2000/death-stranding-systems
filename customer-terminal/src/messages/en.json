@@ -60,12 +60,12 @@
     "selectPickup": "Select pickup method",
     "enterPayment": "Enter payment information"
   },
-  "knotCities": [
-    "Capital Knot City",
-    "Port Knot City", 
-    "Lake Knot City",
-    "South Knot City",
-    "Mountain Knot City",
-    "Edge Knot City"
-  ]
+  "knotCities": {
+    "capital": "Capital Knot City",
+    "port": "Port Knot City", 
+    "lake": "Lake Knot City",
+    "south": "South Knot City",
+    "mountain": "Mountain Knot City",
+    "edge": "Edge Knot City"
+  }
 } 

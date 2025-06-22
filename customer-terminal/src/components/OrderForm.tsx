@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import CustomDropdown from './CustomDropdown'
 
 export default function OrderForm() {
   const t = useTranslations('orderForm')
@@ -27,19 +28,33 @@ export default function OrderForm() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [orderId, setOrderId] = useState<string>('')
 
-  const categories = ['Standard', 'Fragile', 'Medical', 'Emergency', 'Hazardous']
-  const pickupMethods = ['Standard Pickup', 'Express Pickup', 'Scheduled Pickup']
-  const knotCities = [
-    'Capital Knot City',
-    'Port Knot City', 
-    'Lake Knot City',
-    'South Knot City',
-    'Mountain Knot City',
-    'Edge Knot City'
-  ]
+  // Dropdown options data
+  const categoryKeys = ['Standard', 'Fragile', 'Medical', 'Emergency', 'Hazardous']
+  const pickupMethodKeys = ['Standard Pickup', 'Express Pickup', 'Scheduled Pickup']
+  const knotCityKeys = ['capital', 'port', 'lake', 'south', 'mountain', 'edge']
+
+  // Transform data for custom dropdown component
+  const categoryOptions = categoryKeys.map(key => ({
+    value: key,
+    label: t(`cargo.categories.${key}`)
+  }))
+
+  const pickupMethodOptions = pickupMethodKeys.map(key => ({
+    value: key,
+    label: t(`delivery.pickupMethods.${key}`)
+  }))
+
+  const knotCityOptions = knotCityKeys.map(key => ({
+    value: key,
+    label: tKnotCities(key)
+  }))
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleDropdownChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -49,16 +64,27 @@ export default function OrderForm() {
     setSubmitStatus('idle')
 
     try {
+      // Get the actual city names for API submission
+      const getSenderCityName = () => {
+        const cityOption = knotCityOptions.find(option => option.value === formData.senderKnotCity)
+        return cityOption ? cityOption.label : formData.senderKnotCity
+      }
+
+      const getRecipientCityName = () => {
+        const cityOption = knotCityOptions.find(option => option.value === formData.recipientKnotCity)
+        return cityOption ? cityOption.label : formData.recipientKnotCity
+      }
+
       const orderData = {
         sender: {
           name: formData.senderName,
           location: formData.senderLocation,
-          knot_city: formData.senderKnotCity
+          knot_city: getSenderCityName()
         },
         recipient: {
           name: formData.recipientName,
           location: formData.recipientLocation,
-          knot_city: formData.recipientKnotCity
+          knot_city: getRecipientCityName()
         },
         item: {
           name: formData.itemName,
@@ -172,21 +198,15 @@ export default function OrderForm() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-blue-200 font-mono text-sm mb-2">
-                  {t('sender.knotCity')}
-                </label>
-                <select
-                  name="senderKnotCity"
+                <CustomDropdown
+                  options={knotCityOptions}
                   value={formData.senderKnotCity}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  onChange={(value) => handleDropdownChange('senderKnotCity', value)}
+                  placeholder={tPlaceholders('selectKnotCity')}
+                  label={t('sender.knotCity')}
+                  name="senderKnotCity"
                   required
-                >
-                  <option value="">{tPlaceholders('selectKnotCity')}</option>
-                  {knotCities.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>
@@ -226,21 +246,15 @@ export default function OrderForm() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-blue-200 font-mono text-sm mb-2">
-                  {t('recipient.knotCity')}
-                </label>
-                <select
-                  name="recipientKnotCity"
+                <CustomDropdown
+                  options={knotCityOptions}
                   value={formData.recipientKnotCity}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  onChange={(value) => handleDropdownChange('recipientKnotCity', value)}
+                  placeholder={tPlaceholders('selectKnotCity')}
+                  label={t('recipient.knotCity')}
+                  name="recipientKnotCity"
                   required
-                >
-                  <option value="">{tPlaceholders('selectKnotCity')}</option>
-                  {knotCities.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>
@@ -295,23 +309,15 @@ export default function OrderForm() {
                 />
               </div>
               <div>
-                <label className="block text-blue-200 font-mono text-sm mb-2">
-                  {t('cargo.category')}
-                </label>
-                <select
-                  name="itemCategory"
+                <CustomDropdown
+                  options={categoryOptions}
                   value={formData.itemCategory}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  onChange={(value) => handleDropdownChange('itemCategory', value)}
+                  placeholder={tPlaceholders('selectCategory')}
+                  label={t('cargo.category')}
+                  name="itemCategory"
                   required
-                >
-                  <option value="">{tPlaceholders('selectCategory')}</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {t(`cargo.categories.${category}`)}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>
@@ -323,23 +329,15 @@ export default function OrderForm() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-blue-200 font-mono text-sm mb-2">
-                  {t('delivery.pickup')}
-                </label>
-                <select
-                  name="pickupMethod"
+                <CustomDropdown
+                  options={pickupMethodOptions}
                   value={formData.pickupMethod}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700 border border-blue-500/30 rounded px-4 py-2 text-blue-100 font-mono focus:outline-none focus:border-blue-400"
+                  onChange={(value) => handleDropdownChange('pickupMethod', value)}
+                  placeholder={tPlaceholders('selectPickup')}
+                  label={t('delivery.pickup')}
+                  name="pickupMethod"
                   required
-                >
-                  <option value="">{tPlaceholders('selectPickup')}</option>
-                  {pickupMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {t(`delivery.pickupMethods.${method}`)}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-blue-200 font-mono text-sm mb-2">
