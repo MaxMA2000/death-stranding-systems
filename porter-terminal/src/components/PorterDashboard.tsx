@@ -436,10 +436,35 @@ export default function PorterDashboard() {
       
       {/* Navigation Map Modal */}
       {showNavigationMap && navigationOrder && (
-        <NavigationMap 
-          order={navigationOrder}
-          onClose={closeNavigation}
-        />
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-orange-500/30 rounded-lg w-[90vw] h-[80vh] max-w-6xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-orange-500/30">
+              <div>
+                <h3 className="text-xl font-mono text-orange-300">{t('navigation')}</h3>
+                <p className="text-orange-400/80 text-sm mt-1">
+                  {navigationOrder.sender.name} → {navigationOrder.recipient.name}
+                </p>
+              </div>
+              <button 
+                onClick={closeNavigation}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-orange-300 rounded font-mono transition-colors"
+              >
+                {t('close')}
+              </button>
+            </div>
+
+            {/* Map Container */}
+            <div className="flex-1 p-4">
+              <NavigationMap 
+                fromAddress={navigationOrder.sender.location}
+                fromCoords={[navigationOrder.sender.coordinates.lat, navigationOrder.sender.coordinates.lng]}
+                toAddress={navigationOrder.recipient.location}
+                toCoords={[navigationOrder.recipient.coordinates.lat, navigationOrder.recipient.coordinates.lng]}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

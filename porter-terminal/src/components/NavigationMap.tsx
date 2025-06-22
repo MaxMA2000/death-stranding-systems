@@ -1,323 +1,358 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
 declare global {
   interface Window {
-    qq: any;
-    init?: () => void;
+    qq: any
+    TMap: any
   }
-}
-
-interface Order {
-  id: string
-  sender: {
-    name: string
-    location: string
-    knot_city: string
-    coordinates: { lat: number; lng: number }
-  }
-  recipient: {
-    name: string
-    location: string
-    knot_city: string
-    coordinates: { lat: number; lng: number }
-  }
-  item: {
-    name: string
-    description: string
-    weight: number
-    category: string
-  }
-  pickup_method: string
-  payment_info: string
-  status: string
-  created_at: string
-}
-
-interface BTArea {
-  id: string
-  name: string
-  center: { lat: number; lng: number }
-  radius: number
-  intensity: string
-  is_active: boolean
 }
 
 interface NavigationMapProps {
-  order: Order
-  onClose: () => void
+  fromAddress: string
+  fromCoords: [number, number]
+  toAddress: string
+  toCoords: [number, number]
 }
 
-export default function NavigationMap({ order, onClose }: NavigationMapProps) {
+interface BTArea {
+  lat: number
+  lng: number
+  radius: number
+  intensity: 'high' | 'medium' | 'low' | 'timefall'
+}
+
+// BT危险区域数据 (洛杉矶地区)
+const BT_AREAS: BTArea[] = [
+  // 高危险区域 (红色)
+  { lat: 34.0522, lng: -118.2437, radius: 2000, intensity: 'high' }, // Downtown LA
+  { lat: 34.0928, lng: -118.3287, radius: 1500, intensity: 'high' }, // Hollywood
+  
+  // 中等危险区域 (橙色)
+  { lat: 34.0195, lng: -118.4912, radius: 1800, intensity: 'medium' }, // Santa Monica
+  { lat: 34.1478, lng: -118.1445, radius: 1200, intensity: 'medium' }, // Pasadena
+  
+  // 低危险区域 (黄色)
+  { lat: 34.0689, lng: -118.4452, radius: 1000, intensity: 'low' }, // Beverly Hills
+  { lat: 33.7701, lng: -118.1937, radius: 1500, intensity: 'low' }, // Long Beach
+  
+  // 时间雨区域 (紫色)
+  { lat: 34.1184, lng: -118.3004, radius: 2500, intensity: 'timefall' }, // Universal City
+]
+
+// polyline坐标解压函数
+function decompressPolyline(polyline: number[]): Array<[number, number]> {
+  const coordinates: Array<[number, number]> = []
+  
+  for (let i = 0; i < polyline.length; i += 2) {
+    if (i === 0) {
+      // 第一个坐标是原始未压缩的
+      coordinates.push([polyline[i], polyline[i + 1]])
+    } else {
+      // 后续坐标使用前向差分解压
+      const lat = polyline[i - 2] + polyline[i] / 1000000
+      const lng = polyline[i - 1] + polyline[i + 1] / 1000000
+      coordinates.push([lat, lng])
+    }
+  }
+  
+  return coordinates
+}
+
+export default function NavigationMap({ fromAddress, fromCoords, toAddress, toCoords }: NavigationMapProps) {
   const t = useTranslations('navigation')
   const mapRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<any>(null)
-  const [btAreas, setBtAreas] = useState<BTArea[]>([])
   const [routeData, setRouteData] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // 获取BT区域数据
-  useEffect(() => {
-    const fetchBTAreas = async () => {
-      try {
-        const response = await fetch('http://localhost:8081/api/bt-areas')
-        if (response.ok) {
-          const areas = await response.json()
-          setBtAreas(areas)
-        }
-      } catch (error) {
-        console.error('Error fetching BT areas:', error)
-      }
+  // 获取BT强度文本
+  const getIntensityText = (intensity: string) => {
+    switch (intensity) {
+      case 'high': return t('btIntensity.high')
+      case 'medium': return t('btIntensity.medium')
+      case 'low': return t('btIntensity.low')
+      case 'timefall': return t('btIntensity.timefall')
+      default: return intensity
     }
+  }
 
-    fetchBTAreas()
-  }, [])
+  // 获取BT区域颜色
+  const getBTColor = (intensity: string) => {
+    switch (intensity) {
+      case 'high': return '#FF0000'      // 红色
+      case 'medium': return '#FF8C00'    // 橙色
+      case 'low': return '#FFD700'       // 黄色
+      case 'timefall': return '#8A2BE2'  // 紫色
+      default: return '#808080'
+    }
+  }
 
-  // 初始化腾讯地图
+  // 调用腾讯地图路线规划API
+  const fetchRoute = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Use backend API instead of calling Tencent Maps directly to avoid CORS
+      const backendUrl = 'http://localhost:8081'
+      const url = `${backendUrl}/api/navigation/route?from_lat=${fromCoords[0]}&from_lng=${fromCoords[1]}&to_lat=${toCoords[0]}&to_lng=${toCoords[1]}`
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // The backend returns NavigationResponse format, not Tencent format
+      if (data.route && data.route.points) {
+        // Convert backend response to expected format
+        const routeData = {
+          distance: data.route.distance,
+          duration: data.route.duration,
+          polyline: data.route.points // This is already decoded coordinates
+        }
+        setRouteData(routeData)
+      } else {
+        throw new Error(t('routeError'))
+      }
+    } catch (err) {
+      console.error('Route planning error:', err)
+      setError(err instanceof Error ? err.message : t('routeError'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 初始化地图
   useEffect(() => {
-    const initMap = () => {
-      if (!mapRef.current || !window.qq) return
+    if (!mapRef.current) return
 
-      // 创建地图实例
+    const initMap = () => {
+      if (!window.qq || !window.qq.maps) {
+        setTimeout(initMap, 100)
+        return
+      }
+
       const mapInstance = new window.qq.maps.Map(mapRef.current, {
-        center: new window.qq.maps.LatLng(
-          (order.sender.coordinates.lat + order.recipient.coordinates.lat) / 2,
-          (order.sender.coordinates.lng + order.recipient.coordinates.lng) / 2
-        ),
-        zoom: 12,
-        mapTypeId: window.qq.maps.MapTypeId.ROADMAP
+        center: new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]),
+        zoom: 12
       })
 
       setMap(mapInstance)
-      setIsLoading(false)
-
-      // 添加起点和终点标记
-      const startMarker = new window.qq.maps.Marker({
-        position: new window.qq.maps.LatLng(
-          order.sender.coordinates.lat,
-          order.sender.coordinates.lng
-        ),
-        map: mapInstance,
-        title: `起点: ${order.sender.name}`,
-        icon: new window.qq.maps.MarkerImage(
-          'data:image/svg+xml;base64,' + btoa(`
-            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="12" fill="#22C55E" stroke="#fff" stroke-width="2"/>
-              <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">S</text>
-            </svg>
-          `),
-          new window.qq.maps.Size(32, 32),
-          new window.qq.maps.Point(0, 0),
-          new window.qq.maps.Point(16, 16)
-        )
-      })
-
-      const endMarker = new window.qq.maps.Marker({
-        position: new window.qq.maps.LatLng(
-          order.recipient.coordinates.lat,
-          order.recipient.coordinates.lng
-        ),
-        map: mapInstance,
-        title: `终点: ${order.recipient.name}`,
-        icon: new window.qq.maps.MarkerImage(
-          'data:image/svg+xml;base64,' + btoa(`
-            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="12" fill="#EF4444" stroke="#fff" stroke-width="2"/>
-              <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">E</text>
-            </svg>
-          `),
-          new window.qq.maps.Size(32, 32),
-          new window.qq.maps.Point(0, 0),
-          new window.qq.maps.Point(16, 16)
-        )
-      })
-
-      // 获取路线规划
-      calculateRoute(mapInstance)
     }
 
-    // 加载腾讯地图API
-    if (!window.qq) {
-      const script = document.createElement('script')
-      script.src = `https://map.qq.com/api/gljs?v=1.exp&key=KWWBZ-2OOKL-LZZP5-MFARF-7XNZJ-2UFMV&callback=init`
-      script.async = true
-      
-      window.init = initMap
-      document.head.appendChild(script)
+    initMap()
+  }, [fromCoords])
 
-      return () => {
-        document.head.removeChild(script)
-        if (window.init) {
-          delete window.init
-        }
-      }
-    } else {
-      initMap()
-    }
-  }, [order])
-
-  // 绘制BT区域
+  // 获取路线数据
   useEffect(() => {
-    if (!map || !btAreas.length) return
+    fetchRoute()
+  }, [fromCoords, toCoords])
 
-    btAreas.forEach(area => {
-      const circle = new window.qq.maps.Circle({
-        center: new window.qq.maps.LatLng(area.center.lat, area.center.lng),
-        radius: area.radius,
-        map: map,
-        strokeColor: getAreaColor(area.intensity),
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: getAreaColor(area.intensity),
-        fillOpacity: 0.2
-      })
+  // 绘制地图内容
+  useEffect(() => {
+    if (!map || !routeData) return
 
-      // 添加区域标签
-      const infoWindow = new window.qq.maps.InfoWindow({
-        content: `
-          <div class="p-2 text-sm">
-            <div class="font-bold text-orange-600">${area.name}</div>
-            <div class="text-gray-600">${t('threatLevel')}: ${getIntensityText(area.intensity)}</div>
-            <div class="text-gray-600">${t('effectRadius')}: ${area.radius}m</div>
-          </div>
-        `
-      })
+    // 清除之前的标记
+    map.clearOverlays()
 
-      // 点击区域显示信息
-      window.qq.maps.event.addListener(circle, 'click', () => {
-        infoWindow.open(map, new window.qq.maps.LatLng(area.center.lat, area.center.lng))
-      })
-    })
-  }, [map, btAreas])
-
-  const calculateRoute = async (mapInstance: any) => {
     try {
-      const response = await fetch('http://localhost:8081/api/navigation/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: order.sender.coordinates,
-          to: order.recipient.coordinates,
-          avoid_bt: true,
-          transport_mode: "walking"
-        }),
+      // Handle route coordinates - backend already provides decoded coordinates
+      let routeCoords
+      if (Array.isArray(routeData.polyline)) {
+        // Backend returns decoded coordinates as an array
+        routeCoords = routeData.polyline
+      } else if (typeof routeData.polyline === 'string') {
+        // Fallback for compressed polyline format
+        routeCoords = decompressPolyline(routeData.polyline)
+      } else {
+        throw new Error('Invalid route data format')
+      }
+      
+      // 创建路线
+      const routePath = routeCoords.map((coord: any) => 
+        new window.qq.maps.LatLng(coord.lat || coord[0], coord.lng || coord[1])
+      )
+
+      const polyline = new window.qq.maps.Polyline({
+        path: routePath,
+        strokeColor: '#0066CC',
+        strokeWeight: 6,
+        strokeOpacity: 0.8,
+        map: map
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setRouteData(data)
-        
-        // 绘制路线
-        if (data.route && data.route.points) {
-          const path = data.route.points.map((point: any) => 
-            new window.qq.maps.LatLng(point.lat, point.lng)
-          )
+      // 添加起点标记
+      const startMarker = new window.qq.maps.Marker({
+        position: new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]),
+        map: map,
+        title: t('startPoint')
+      })
 
-          const polyline = new window.qq.maps.Polyline({
-            path: path,
-            map: mapInstance,
-            strokeColor: '#3B82F6',
-            strokeOpacity: 0.8,
-            strokeWeight: 4
-          })
+      const startInfoWindow = new window.qq.maps.InfoWindow({
+        content: `<div style="padding: 10px;">
+          <h4>${t('startPoint')}</h4>
+          <p>${fromAddress}</p>
+        </div>`
+      })
 
-          // 调整地图视野以包含整个路线
-          const bounds = new window.qq.maps.LatLngBounds()
-          path.forEach((point: any) => bounds.extend(point))
-          mapInstance.fitBounds(bounds)
-        }
-      }
-    } catch (error) {
-      console.error('Error calculating route:', error)
+      window.qq.maps.event.addListener(startMarker, 'click', () => {
+        startInfoWindow.open(map, startMarker)
+      })
+
+      // 添加终点标记
+      const endMarker = new window.qq.maps.Marker({
+        position: new window.qq.maps.LatLng(toCoords[0], toCoords[1]),
+        map: map,
+        title: t('endPoint')
+      })
+
+      const endInfoWindow = new window.qq.maps.InfoWindow({
+        content: `<div style="padding: 10px;">
+          <h4>${t('endPoint')}</h4>
+          <p>${toAddress}</p>
+        </div>`
+      })
+
+      window.qq.maps.event.addListener(endMarker, 'click', () => {
+        endInfoWindow.open(map, endMarker)
+      })
+
+      // 添加BT危险区域
+      BT_AREAS.forEach((area, index) => {
+        const circle = new window.qq.maps.Circle({
+          center: new window.qq.maps.LatLng(area.lat, area.lng),
+          radius: area.radius,
+          fillColor: getBTColor(area.intensity),
+          fillOpacity: 0.3,
+          strokeColor: getBTColor(area.intensity),
+          strokeWeight: 2,
+          strokeOpacity: 0.8,
+          map: map
+        })
+
+        const btInfoWindow = new window.qq.maps.InfoWindow({
+          content: `<div style="padding: 10px;">
+            <h4>${t('btArea')}</h4>
+            <p><strong>${t('intensity')}:</strong> ${getIntensityText(area.intensity)}</p>
+            <p><strong>${t('radius')}:</strong> ${area.radius}m</p>
+            <p style="color: #ff6b35; font-weight: bold;">${t('avoidanceRecommended')}</p>
+          </div>`
+        })
+
+        window.qq.maps.event.addListener(circle, 'click', (e: any) => {
+          btInfoWindow.setPosition(e.latLng)
+          btInfoWindow.open(map)
+        })
+      })
+
+      // 调整地图视野以包含所有点
+      const bounds = new window.qq.maps.LatLngBounds()
+      bounds.extend(new window.qq.maps.LatLng(fromCoords[0], fromCoords[1]))
+      bounds.extend(new window.qq.maps.LatLng(toCoords[0], toCoords[1]))
+      
+      // 包含BT区域
+      BT_AREAS.forEach(area => {
+        bounds.extend(new window.qq.maps.LatLng(area.lat, area.lng))
+      })
+      
+      map.fitBounds(bounds)
+
+    } catch (err) {
+      console.error('Error rendering map:', err)
+      setError(t('mapRenderError'))
     }
+  }, [map, routeData, fromCoords, toCoords, fromAddress, toAddress, t])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('loadingRoute')}</p>
+        </div>
+      </div>
+    )
   }
 
-  const getAreaColor = (intensity: string) => {
-    switch (intensity) {
-      case 'high': return '#EF4444' // 红色 - 高危险
-      case 'medium': return '#F59E0B' // 橙色 - 中等危险
-      case 'low': return '#EAB308' // 黄色 - 低危险
-      case 'timefall': return '#8B5CF6' // 紫色 - 时间雨
-      default: return '#6B7280' // 灰色 - 未知
-    }
-  }
-
-  const getIntensityText = (intensity: string) => {
-    switch (intensity) {
-      case 'high': return t('highDanger')
-      case 'medium': return t('mediumDanger')
-      case 'low': return t('lowDanger')
-      case 'timefall': return t('timefallZone')
-      default: return t('unknown')
-    }
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-red-50 rounded-lg border border-red-200">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-2">⚠️</div>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={fetchRoute}
+            className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+          >
+            {t('retry')}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-gray-900 border border-orange-500/30 rounded-lg w-[90vw] h-[80vh] max-w-6xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-orange-500/30">
-          <div>
-            <h3 className="text-xl font-mono text-orange-300">{t('title')}</h3>
-            <p className="text-orange-400/80 text-sm mt-1">
-              {order.sender.name} → {order.recipient.name}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-orange-300 rounded font-mono transition-colors"
-          >
-            {t('close')}
-          </button>
-        </div>
-
-        {/* Map Container */}
-        <div className="flex-1 relative">
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-              <div className="text-orange-300 font-mono">{t('loadingMap')}</div>
+    <div className="space-y-4">
+      {/* 路线信息 */}
+      {routeData && (
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="font-semibold text-gray-800 mb-2">{t('routeInfo')}</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">{t('distance')}:</span>
+              <span className="ml-2 font-medium">{(routeData.distance / 1000).toFixed(1)} km</span>
             </div>
-          )}
-          <div ref={mapRef} className="w-full h-full" />
-        </div>
-
-        {/* Route Info */}
-        {routeData && (
-          <div className="p-4 border-t border-orange-500/30 bg-gray-800/50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-mono">
-              <div>
-                <div className="text-orange-400">{t('distance')}</div>
-                <div className="text-orange-200">{routeData.route_info?.total_distance || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-orange-400">{t('estimatedTime')}</div>
-                <div className="text-orange-200">{routeData.route_info?.estimated_time || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-orange-400">{t('dangerLevel')}</div>
-                <div className="text-orange-200">{routeData.route_info?.danger_level || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-orange-400">{t('btAreas')}</div>
-                <div className="text-orange-200">{routeData.bt_areas?.length || 0} 个</div>
-              </div>
+            <div>
+              <span className="text-gray-600">{t('duration')}:</span>
+              <span className="ml-2 font-medium">{Math.round(routeData.duration / 60)} {t('minutes')}</span>
             </div>
-            
-            {routeData.warnings && routeData.warnings.length > 0 && (
-              <div className="mt-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded">
-                <div className="text-yellow-400 font-bold text-xs mb-1">⚠️ {t('routeWarnings')}</div>
-                {routeData.warnings.map((warning: string, index: number) => (
-                  <div key={index} className="text-yellow-300 text-xs">{warning}</div>
-                ))}
-              </div>
-            )}
+            <div>
+              <span className="text-gray-600">{t('toll')}:</span>
+              <span className="ml-2 font-medium">¥{routeData.toll || 0}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">{t('trafficLights')}:</span>
+              <span className="ml-2 font-medium">{routeData.traffic_light_count || 0}</span>
+            </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* BT区域图例 */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="font-semibold text-gray-800 mb-3">{t('btLegend')}</h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="flex items-center">
+            <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+            <span>{getIntensityText('high')}</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 rounded-full bg-orange-500 mr-2"></div>
+            <span>{getIntensityText('medium')}</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+            <span>{getIntensityText('low')}</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 rounded-full bg-purple-500 mr-2"></div>
+            <span>{getIntensityText('timefall')}</span>
+          </div>
+        </div>
       </div>
+
+      {/* 地图容器 */}
+      <div 
+        ref={mapRef} 
+        className="w-full h-96 rounded-lg border border-gray-300"
+        style={{ minHeight: '400px' }}
+      />
     </div>
   )
 } 

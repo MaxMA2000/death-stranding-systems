@@ -29,6 +29,12 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <script 
+          src="https://map.qq.com/api/gljs?v=1.exp&key=KWWBZ-2OOKL-LZZP5-MFARF-7XNZJ-2UFMV" 
+          async
+        ></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 min-h-screen`}
       >

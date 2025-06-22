@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"bridges-backend/internal/models"
@@ -126,6 +127,56 @@ func (h *OrderHandler) CalculateNavigation(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(response)
 }
 
+// GetRoute handles GET /api/navigation/route
+func (h *OrderHandler) GetRoute(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	fromLat := r.URL.Query().Get("from_lat")
+	fromLng := r.URL.Query().Get("from_lng")
+	toLat := r.URL.Query().Get("to_lat")
+	toLng := r.URL.Query().Get("to_lng")
+
+	if fromLat == "" || fromLng == "" || toLat == "" || toLng == "" {
+		http.Error(w, "Missing required parameters: from_lat, from_lng, to_lat, to_lng", http.StatusBadRequest)
+		return
+	}
+
+	// Convert to floats (add error handling if needed)
+	from := types.Coordinates{}
+	to := types.Coordinates{}
+
+	if _, err := fmt.Sscanf(fromLat, "%f", &from.Lat); err != nil {
+		http.Error(w, "Invalid from_lat parameter", http.StatusBadRequest)
+		return
+	}
+	if _, err := fmt.Sscanf(fromLng, "%f", &from.Lng); err != nil {
+		http.Error(w, "Invalid from_lng parameter", http.StatusBadRequest)
+		return
+	}
+	if _, err := fmt.Sscanf(toLat, "%f", &to.Lat); err != nil {
+		http.Error(w, "Invalid to_lat parameter", http.StatusBadRequest)
+		return
+	}
+	if _, err := fmt.Sscanf(toLng, "%f", &to.Lng); err != nil {
+		http.Error(w, "Invalid to_lng parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Use the existing navigation calculation logic
+	req := types.NavigationRequest{
+		From: from,
+		To:   to,
+	}
+
+	response, err := h.store.CalculateNavigation(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // GetBTAreas handles GET /api/bt-areas
 func (h *OrderHandler) GetBTAreas(w http.ResponseWriter, r *http.Request) {
 	areas := h.store.GetBTAreas()
@@ -216,6 +267,7 @@ func (h *OrderHandler) RegisterRoutes(router *mux.Router) {
 
 	// Navigation routes
 	router.HandleFunc("/api/navigation/calculate", h.CalculateNavigation).Methods("POST")
+	router.HandleFunc("/api/navigation/route", h.GetRoute).Methods("GET")
 
 	// BT area routes
 	router.HandleFunc("/api/bt-areas", h.GetBTAreas).Methods("GET")

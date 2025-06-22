@@ -56,6 +56,7 @@ func main() {
 	log.Println("  GET  /api/orders/{id}")
 	log.Println("  PATCH /api/orders/{id}/status")
 	log.Println("  POST /api/navigation/calculate")
+	log.Println("  GET  /api/navigation/route")
 	log.Println("  GET  /api/bt-areas")
 	log.Println("  POST /api/bt-areas")
 	log.Println("  PUT  /api/bt-areas/{id}")
