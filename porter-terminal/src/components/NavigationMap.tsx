@@ -21,6 +21,14 @@ interface BTArea {
   intensity: 'high' | 'medium' | 'low' | 'timefall'
 }
 
+interface RouteData {
+  distance: number
+  duration: number
+  points: Array<[number, number]>
+  normalizedFrom?: [number, number]
+  normalizedTo?: [number, number]
+}
+
 // BT危险区域数据 - 现在使用地图坐标系统
 const BT_AREAS: BTArea[] = [
   // 高危险区域 (红色)
@@ -66,6 +74,27 @@ const coordsToCanvas = (
   const x = lng * canvasWidth
   const y = lat * canvasHeight
   return [x, y]
+}
+
+// 确保起点和终点坐标足够分散
+const ensureDistantPoints = (
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number
+): [number, number, number, number] => {
+  // 计算当前距离
+  const dx = toLat - fromLat
+  const dy = toLng - fromLng
+  const distance = Math.sqrt(dx * dx + dy * dy)
+  
+  // 如果距离太小，调整坐标使它们更分散
+  if (distance < 0.4) { // 确保至少有0.4的距离（地图宽度的40%）
+    // 找到地图上相对较远的两个点
+    return [0.2, 0.2, 0.8, 0.8] // 左上角到右下角
+  }
+  
+  return [fromLat, fromLng, toLat, toLng]
 }
 
 // 生成贝塞尔曲线路径点
@@ -147,7 +176,7 @@ export default function NavigationMap({
 }: NavigationMapProps) {
   const t = useTranslations('navigation')
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [routeData, setRouteData] = useState<any>(null)
+  const [routeData, setRouteData] = useState<RouteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 800 })
@@ -206,8 +235,16 @@ export default function NavigationMap({
       setError(null)
       
       // 将API坐标转换为我们的地图坐标系统
-      const normalizedFrom = normalizeCoords(fromCoords)
-      const normalizedTo = normalizeCoords(toCoords)
+      let normalizedFrom = normalizeCoords(fromCoords)
+      let normalizedTo = normalizeCoords(toCoords)
+      
+      // 确保起点和终点足够分散
+      const [adjustedFromLat, adjustedFromLng, adjustedToLat, adjustedToLng] = 
+        ensureDistantPoints(normalizedFrom[0], normalizedFrom[1], normalizedTo[0], normalizedTo[1])
+      
+      // 更新规范化坐标
+      normalizedFrom = [adjustedFromLat, adjustedFromLng]
+      normalizedTo = [adjustedToLat, adjustedToLng]
       
       // 生成模拟路线数据
       const data = generateRouteData(
@@ -217,7 +254,11 @@ export default function NavigationMap({
         normalizedTo[1]
       )
       
-      setRouteData(data)
+      setRouteData({
+        ...data,
+        normalizedFrom,
+        normalizedTo
+      })
     } catch (err) {
       console.error('Route calculation error:', err)
       setError(err instanceof Error ? err.message : t('routeError'))
@@ -314,9 +355,9 @@ export default function NavigationMap({
         ctx.fillRect(x - 2, y - 4, 4, 8)
       })
       
-      // 将API坐标转换为我们的地图坐标系统
-      const normalizedFrom = normalizeCoords(fromCoords)
-      const normalizedTo = normalizeCoords(toCoords)
+      // 确保我们使用路由数据中存储的规范化坐标
+      const normalizedFrom = routeData.normalizedFrom || normalizeCoords(fromCoords)
+      const normalizedTo = routeData.normalizedTo || normalizeCoords(toCoords)
       
       // 生成路径点
       const pathPoints = generatePathPoints(
@@ -368,23 +409,64 @@ export default function NavigationMap({
         canvas.height
       )
       
-      // 起点标记（绿色）
+      // 绘制标记的阴影，增加可见性
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'
+      ctx.shadowBlur = 15
+      
+      // 起点标记（绿色）- 更大更明显
       ctx.beginPath()
-      ctx.arc(startX, startY, 8, 0, Math.PI * 2)
+      ctx.arc(startX, startY, 15, 0, Math.PI * 2) // 增加半径到15
       ctx.fillStyle = '#00FF00'
       ctx.fill()
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.lineWidth = 3 // 增加边框宽度
+      ctx.stroke()
+      
+      // 添加起点标记内部装饰
+      ctx.beginPath()
+      ctx.arc(startX, startY, 7, 0, Math.PI * 2)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fill()
+      
+      // 终点标记（红色）- 更大更明显
+      ctx.beginPath()
+      ctx.arc(endX, endY, 15, 0, Math.PI * 2) // 增加半径到15
+      ctx.fillStyle = '#FF0000'
+      ctx.fill()
+      ctx.strokeStyle = '#FFFFFF'
+      ctx.lineWidth = 3 // 增加边框宽度
+      ctx.stroke()
+      
+      // 添加终点标记内部装饰
+      ctx.beginPath()
+      ctx.moveTo(endX - 5, endY - 5)
+      ctx.lineTo(endX + 5, endY + 5)
+      ctx.moveTo(endX + 5, endY - 5)
+      ctx.lineTo(endX - 5, endY + 5)
       ctx.strokeStyle = '#FFFFFF'
       ctx.lineWidth = 2
       ctx.stroke()
       
-      // 终点标记（红色）
-      ctx.beginPath()
-      ctx.arc(endX, endY, 8, 0, Math.PI * 2)
+      // 重置阴影
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      
+      // 添加起点和终点文本标签
+      ctx.font = 'bold 16px Arial'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      
+      // 起点标签
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillText('起点', startX, startY - 20)
+      ctx.fillStyle = '#00FF00'
+      ctx.fillText('起点', startX, startY - 22)
+      
+      // 终点标签
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+      ctx.fillText('终点', endX, endY - 20)
       ctx.fillStyle = '#FF0000'
-      ctx.fill()
-      ctx.strokeStyle = '#FFFFFF'
-      ctx.lineWidth = 2
-      ctx.stroke()
+      ctx.fillText('终点', endX, endY - 22)
     }
   }, [canvasRef, routeData, canvasSize, fromCoords, toCoords])
 
